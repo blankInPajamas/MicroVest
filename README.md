@@ -5,6 +5,7 @@ A crowdfunding platform for small businesses to gather their funds and small inv
 For you to run this locally:
 
 > npm install
+
 > npm run dev
 
 This should get the project running locally
