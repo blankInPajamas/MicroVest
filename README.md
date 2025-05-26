@@ -1,12 +1,10 @@
-# React + Vite
+# MicroVest
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+In order to run this repo, do the following steps:
 
-Currently, two official plugins are available:
+1. Git clone this repo. Head to the folder using "cd MicroVest".
+2. Then, proceed to use the following cmd:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+    > npm install
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+3. Once you are done with this, you should be able to use this repo.
