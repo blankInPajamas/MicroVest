@@ -15,7 +15,6 @@ function LandingPage()
             <Navbar />
             <HeroSection01 />
             <HeroSection02 />
-
             <FeatureSection
                 title="Pitch Ideas"
                 description="Pitch your small business ideas using multimedia i.e. Presentations, Images, Documents"
