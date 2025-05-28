@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 // import "./sign-up-page.css"; // We will remove or significantly reduce this file
 
 export default function SignUpPage() {
@@ -616,13 +617,13 @@ export default function SignUpPage() {
               <div className="text-sm text-gray-500">
                 Already have an account?{" "}
                 {/* As before, convert this to <Link> if /sign-in is an internal route */}
-                <a
-                  href="/sign-in"
+                <Link
+                  to="/consultant"
                   className="text-white font-medium relative after:content-[''] after:absolute after:w-full after:h-[1px] after:bottom-[-2px] after:left-0 after:bg-white after:shadow-[0_0_5px_rgba(255,255,255,0.5)]"
                   onClick={(e) => { e.preventDefault(); console.log("Navigate to /sign-in"); }}
                 >
                   Sign in here
-                </a>
+                </Link>
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ import FeatureSection from "./FeatureSection";
 import pitchIdeasImg from "../../assets/pitch_idea.png";
 import investmentEasyImg from "../../assets/technology.png"
 import heroImage from "../../assets/landing_hero_section.png";
+import Footer from "../../components/Footer";
 
 function LandingPage()
 {
@@ -40,6 +41,8 @@ function LandingPage()
                 imageSrc={heroImage} // Use the imported image variable
                 imageAlt="Hand pointing at a financial graph on a screen"
             />
+
+            <Footer />
         </>
     );
 }

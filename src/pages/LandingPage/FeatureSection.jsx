@@ -9,6 +9,11 @@ function FeatureSection({
   inverse = false, // Default to false
 }) {
   const contentOrderClass = inverse ? "md:flex-row-reverse" : "md:flex-row";
+  // Determine text alignment class based on inverse prop
+  const textAlignClass = inverse ? "md:text-right" : "md:text-left";
+  // Determine item alignment for the flex column (for button alignment)
+  const itemsAlignClass = inverse ? "md:items-end" : "md:items-start";
+
 
   return (
     <section className="flex items-center justify-center py-16 px-6 bg-white">
@@ -16,7 +21,8 @@ function FeatureSection({
         className={`container mx-auto flex flex-col items-center gap-12 ${contentOrderClass}`}
       >
         {/* Text Content */}
-        <div className="text-left md:w-1/2">
+        {/* Added flex-col to enable items-alignment, and conditional text & items alignment */}
+        <div className={`flex flex-col md:w-1/2 ${textAlignClass} ${itemsAlignClass}`}>
           <h3 className="text-4xl font-bold text-gray-900 leading-tight mb-4">
             {title}
           </h3>
@@ -28,14 +34,18 @@ function FeatureSection({
           </button>
         </div>
 
-        {/* Image */}
+        {/* Image with Offset Rectangle */}
         <div className="md:w-1/2 flex justify-center">
           <div className="relative w-full max-w-lg">
+            {/* The actual image */}
             <img
               src={imageSrc}
               alt={imageAlt}
-              className="w-full h-auto rounded-lg shadow-xl object-cover"
+              className="w-full h-auto rounded-lg shadow-xl object-cover relative z-10"
             />
+            {/* The black offset rectangle */}
+            {/* Conditional offset for inverse, adjusting top/left or right/bottom */}
+            <div className={`absolute w-full h-full bg-black rounded-lg z-0 ${inverse ? 'bottom-4 right-4' : 'top-4 left-4'}`}></div>
           </div>
         </div>
       </div>

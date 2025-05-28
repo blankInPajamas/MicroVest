@@ -1,0 +1,6 @@
+html, body, #root { /* #root is your main React mount point */
+  min-height: 100vh; /* Ensures they take at least full viewport height */
+  margin: 0;        /* Explicitly remove any default margins */
+  padding: 0;       /* Explicitly remove any default paddings */
+  box-sizing: border-box; /* Good practice for consistent box model */
+}

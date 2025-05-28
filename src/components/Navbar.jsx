@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'; // Import Link
 function Navbar() {
     return(
         <>
-            <nav className="w-full h-18 border-b-1 flex justify-between items-center px-9">
+            <nav className="w-full bg-white h-18 border-b-1 flex justify-between items-center px-9">
                 <div className="text-3xl">
         
                     <Link to="/" className="text-gray-900 hover:text-gray-700 transition duration-300">
