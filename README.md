@@ -8,3 +8,5 @@ In order to run this repo, do the following steps:
     > npm install
 
 3. Once you are done with this, you should be able to use this repo.
+
+   > npm run dev
