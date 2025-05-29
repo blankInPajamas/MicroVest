@@ -20,7 +20,7 @@ function Navbar() {
                     </Link>
 
                     <Link
-                        to="/signup"
+                        to="/messaging"
                         className="border-1 rounded-sm px-4 py-2 hover:bg-black hover:text-white transition duration-300"
                     >
                         Sign up
