@@ -13,7 +13,7 @@ function HeroSection02()
                     <p className="text-lg md:text-xl text-gray-300 mb-10">
                         Get started with investing easily without any hassle. Diversify your portfolio while helping small business owners launch their dreams.
                     </p>
-                    <Link to="/signup" className="bg-white w-50 text-black px-8 py-3 rounded-lg text-lg font-semibold hover:w-50 hover:bg-black hover:text-white hover:border-1 hover:border-white transition duration-300 flex items-center mx-auto">
+                    <Link to="/dummy" className="bg-white w-50 text-black px-8 py-3 rounded-lg text-lg font-semibold hover:w-50 hover:bg-black hover:text-white hover:border-1 hover:border-white transition duration-300 flex items-center mx-auto">
                         Try MicroVest <span className="ml-2">→</span>
                     </Link>
                 </div>

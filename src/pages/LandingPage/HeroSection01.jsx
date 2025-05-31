@@ -16,7 +16,7 @@ function HeroSection01() {
               Connect with investors, pitch your vision, and raise the capital you need.
             </p>
             <Link
-              to="/signup"
+              to="/messaging"
               className="bg-black text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-gray-300 hover:text-gray-900 hover:border-black hover:border-1 transition duration-300 inline-flex items-center justify-center w-full sm:w-auto"
             >
               Try MicroVest free <span className="ml-2">→</span>
