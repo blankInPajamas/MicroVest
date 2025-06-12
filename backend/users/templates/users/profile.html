@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <style> /* Basic inline CSS for readability */
+        body { font-family: sans-serif; margin: 20px; }
+        h2 { color: #333; }
+        p { margin-bottom: 10px; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #fff;
+        }
+        .profile-details {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .profile-details p strong {
+            display: inline-block;
+            width: 120px; /* Align labels */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome, {{ user.username }}!</h2>
+        <p>This is your profile page. Only logged-in users can see this content.</p>
+
+        <div class="profile-details">
+            <h3>Your Details:</h3>
+            <p><strong>Name:</strong> {{ user.name }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Date of Birth:</strong> {{ user.dob|date:"F j, Y" }}</p>
+            <p><strong>Phone Number:</strong> {{ user.phone_number }}</p>
+            {% if user.address %}<p><strong>Address:</strong> {{ user.address }}</p>{% endif %}
+            {% if user.designation %}<p><strong>Designation:</strong> {{ user.designation }}</p>{% endif %}
+            <p><strong>User Type:</strong> {{ user.user_type|capfirst }}</p>
+            {% if user.id_document_url %}<p><strong>ID Document:</strong> <a href="{{ user.id_document_url }}" target="_blank">View Document</a></p>{% endif %}
+            <p><strong>Last Login:</strong> {{ user.last_login|date:"F j, Y, H:i" }}</p>
+            <p><strong>Member Since:</strong> {{ user.date_joined|date:"F j, Y" }}</p>
+        </div>
+
+        <p style="margin-top: 20px;"><a href="{% url 'logout' %}">Log Out</a></p>
+    </div>
+</body>
+</html>

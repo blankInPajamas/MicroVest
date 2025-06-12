@@ -1,20 +1,26 @@
-from django.shortcuts import render
+# MicroVest/users/views.py
 
-# Create your views here.
-# users/views.py
-from rest_framework import generics, permissions
-from .serializers import RegisterSerializer, UserSerializer
-from .models import CustomUser
+from django.shortcuts import render, redirect
+from .forms import CustomUserCreationForm # Import your custom form
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model # To correctly reference the User model
 
-class RegisterView(generics.CreateAPIView):
-    queryset = CustomUser.objects.all()
-    permission_classes = (permissions.AllowAny,)
-    serializer_class = RegisterSerializer
+# Get the active User model (which is now CustomUser because of AUTH_USER_MODEL)
+User = get_user_model()
 
-class UserDetailView(generics.RetrieveAPIView):
-    queryset = CustomUser.objects.all()
-    permission_classes = (permissions.IsAuthenticated,)
-    serializer_class = UserSerializer
+def signup(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save() # This saves the new CustomUser to the database
+            messages.success(request, f'Account created for {user.username}! You can now log in.')
+            return redirect('login')
+    else:
+        form = CustomUserCreationForm()
+    return render(request, 'users/signup.html', {'form': form})
 
-    def get_object(self):
-        return self.request.user
+@login_required
+def profile(request):
+    # request.user will be an instance of your CustomUser model here
+    return render(request, 'users/profile.html')
