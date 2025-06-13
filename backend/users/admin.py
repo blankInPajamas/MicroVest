@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser
+from .models import CustomUser, FriendRequest, Message
 
 class CustomUserAdmin(UserAdmin):
     # This remains the same: defines what columns appear in the list view
@@ -62,3 +62,18 @@ class CustomUserAdmin(UserAdmin):
 
 # Register your CustomUser model with your CustomUserAdmin class
 admin.site.register(CustomUser, CustomUserAdmin)
+
+@admin.register(FriendRequest)
+class FriendRequestAdmin(admin.ModelAdmin):
+    list_display = ('from_user', 'to_user', 'status', 'timestamp')
+    list_filter = ('status',)
+    search_fields = ('from_user__username', 'to_user__username')
+    raw_id_fields = ('from_user', 'to_user')
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('sender', 'receiver', 'timestamp', 'is_read')
+    list_filter = ('is_read', 'timestamp')
+    search_fields = ('sender__username', 'receiver__username', 'content')
+    raw_id_fields = ('sender', 'receiver') # Useful for selecting users easily
+    readonly_fields = ('timestamp',) # Timestamp is auto_now_add
