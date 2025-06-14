@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction 
 from django.db.models import Q # For complex queries
 from .models import FriendRequest, Message
+from .forms import CustomUserChangeForm
 
 User = get_user_model()
 
@@ -210,3 +211,26 @@ def send_message(request, receiver_id):
 
     # Redirect back to the conversation page with the specific user
     return redirect('messaging_with', friend_id=receiver_id)
+
+@login_required
+def edit_profile(request):
+    user = request.user # Get the currently logged-in user
+
+    if request.method == 'POST':
+        # Populate the form with data from the request AND the existing user instance
+        form = CustomUserChangeForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            form.save() # This saves the changes to the database
+            messages.success(request, 'Your profile was successfully updated!')
+            # Redirect to the profile detail page (assuming you have one)
+            return redirect('profile')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        # For a GET request, create the form instance populated with current user data
+        form = CustomUserChangeForm(instance=user)
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'users/edit_profile.html', context)

@@ -9,6 +9,8 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('profile/', views.profile, name='profile'),
 
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
+
     path('friend-requests/', views.friend_requests, name='friend_requests'),
     path('send-friend-request/<int:to_user_id>/', views.send_friend_request, name='send_friend_request'),
     path('accept-friend-request/<int:request_id>/', views.accept_friend_request, name='accept_friend_request'),

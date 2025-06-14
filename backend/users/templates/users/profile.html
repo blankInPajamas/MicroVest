@@ -40,12 +40,31 @@
             text-decoration: none;
         }
         .profile-actions a:hover { background-color: #0056b3; }
+
+        .edit-profile
+        {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #007bff;
+            color: white;
+            border: 0px none;
+            border-radius: 5px;
+            margin: 30px 0px;
+        }
+
+        .edit-profile:hover
+        {
+            background-color: #0056b3;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Welcome, {{ user.username }}!</h2>
         <p>This is your profile page. Only logged-in users can see this content.</p>
+        <br>
+        <a class="edit-profile" href="{% url 'edit_profile' %}">Edit your profile</a>
 
         <div class="profile-details">
             <h3>Your Details:</h3>
