@@ -167,19 +167,29 @@ export default function BusinessDetailPage() {
         });
 
         if (!response.ok) {
-            let errorData = {};
+            let errorData: any = {};
             try {
                 errorData = await response.json();
             } catch (jsonError) {
                 console.warn("Could not parse error JSON from backend:", jsonError);
                 errorData = { message: `Server responded with status ${response.status} but no valid JSON.` };
             }
+            
+            // Check if token is expired
+            if (errorData.code === 'token_not_valid' || errorData.detail?.includes('expired')) {
+                alert('Your session has expired. Please log in again.');
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userId');
+                navigate('/login');
+                return;
+            }
+            
             console.error("Investment failed:", errorData);
-            alert(`Investment failed: ${JSON.stringify(errorData.message || errorData)}`);
+            alert(`Investment failed: ${errorData.message || errorData.detail || JSON.stringify(errorData)}`);
             return;
         }
 
-        let updatedBusiness = {};
+        let updatedBusiness: any = {};
         if (response.status === 200 || response.status === 201) {
             try {
                 updatedBusiness = await response.json();
@@ -470,14 +480,10 @@ export default function BusinessDetailPage() {
                     <span className="text-gray-500">raised of {formatCurrency(funding_goal)}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-center mb-6">
+                <div className="grid grid-cols-1 gap-4 text-center mb-6">
                   <div>
                     <p className="font-bold text-2xl text-gray-900">{backers}</p>
                     <p className="text-sm text-gray-500">Investors</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-2xl text-gray-900">{daysLeft}</p>
-                    <p className="text-sm text-gray-500">Days Left</p>
                   </div>
                 </div>
 

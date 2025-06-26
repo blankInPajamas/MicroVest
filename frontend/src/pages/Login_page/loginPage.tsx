@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { TrendingUp, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom" // Import useNavigate
+import { useUser } from "../../context/UserContext" // Import UserContext
 
 
 // --- Custom Button Component (remains the same) ---
@@ -80,6 +81,7 @@ export default function LoginPage() {
   // --- CORRECT PLACEMENT FOR HOOKS AND ENVIRONMENT VARIABLES ---
   const navigate = useNavigate() // <--- CORRECT: navigate hook inside the component
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // <--- CORRECT: API_BASE_URL inside the component
+  const { login } = useUser(); // <--- ADD: Use UserContext login function
   // --- END CORRECT PLACEMENT ---
 
   const [showPassword, setShowPassword] = useState(false)
@@ -155,22 +157,12 @@ export default function LoginPage() {
 
       if (response.ok) {
           console.log('Login successful:', data);
-          // Store complete user information from the API
-          localStorage.setItem('authToken', data.tokens.access);
-          localStorage.setItem('refreshToken', data.tokens.refresh);
-          localStorage.setItem('userId', data.user_id);
-          localStorage.setItem('userType', data.user_type);
-          localStorage.setItem('username', data.username);
-          localStorage.setItem('email', data.email);
-          localStorage.setItem('first_name', data.first_name || '');
-          localStorage.setItem('last_name', data.last_name || '');
-
+          // Use UserContext login function instead of manually setting localStorage
+          login(data);
+          
           // Redirect to the dashboard
           console.log('Attempting to navigate to dashboard...');
-          // Add a small delay to ensure localStorage is set
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 100);
+          navigate('/dashboard');
       } else {
           // Handle API errors (e.g., invalid credentials, user not found)
           console.error('Login failed:', data);

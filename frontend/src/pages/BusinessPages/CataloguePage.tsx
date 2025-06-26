@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"; // Import useEffect
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer";
+import { useUser } from "../../context/UserContext";
 
 const categories = ["All Categories", "Food & Beverage", "Technology", "Agriculture", "Services", "Manufacturing"];
 
@@ -15,10 +16,12 @@ interface Investment {
   backers: number;
   min_investment: number;
   image?: string;
+  user: number | string;
 }
 
 export default function CataloguePage() {
   const navigate = useNavigate();
+  const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [sortBy, setSortBy] = useState("trending");
@@ -33,6 +36,12 @@ export default function CataloguePage() {
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [investmentAmount, setInvestmentAmount] = useState("");
   const [isInvesting, setIsInvesting] = useState(false);
+
+  // Check if current user is the owner of a business
+  const isOwner = (investment: Investment) => {
+    const currentUserId = localStorage.getItem('userId');
+    return currentUserId && String(investment.user) === String(currentUserId);
+  };
 
   useEffect(() => {
     const fetchInvestments = async () => {
@@ -117,20 +126,41 @@ export default function CataloguePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Investment failed');
+        
+        // Check if token is expired
+        if (errorData.code === 'token_not_valid' || errorData.detail?.includes('expired')) {
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userId');
+          navigate('/login');
+          return;
+        }
+        
+        throw new Error(errorData.detail || errorData.message || 'Investment failed');
       }
 
       const result = await response.json();
       alert(`Successfully invested ${formatCurrency(amount)}!`);
       
-      // Refresh the investments list to show updated funding
-      window.location.reload();
+      // Update the local state instead of reloading the page
+      setInvestments(prevInvestments => 
+        prevInvestments.map(inv => 
+          inv.id === selectedInvestment.id 
+            ? {
+                ...inv,
+                current_funding: inv.current_funding + amount,
+                backers: inv.backers + 1
+              }
+            : inv
+        )
+      );
       
       setShowInvestmentModal(false);
       setSelectedInvestment(null);
       setInvestmentAmount("");
     } catch (error) {
-      alert(`Investment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Investment failed: ${errorMessage}`);
     } finally {
       setIsInvesting(false);
     }
@@ -216,7 +246,11 @@ export default function CataloguePage() {
                         <div className="flex justify-between text-sm"><span className="text-gray-400">Min Investment</span><span className="text-white">{formatCurrency(investment.min_investment)}</span></div>
                       </div>
                       <div className="mt-6 flex gap-3">
-                        <button onClick={() => handleInvestNow(investment)} className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 transition-colors font-medium">Invest Now</button>
+                        {isOwner(investment) ? (
+                          <button disabled className="flex-1 bg-gray-600 text-gray-300 py-2 px-4 rounded-md cursor-not-allowed font-medium">Your Business</button>
+                        ) : (
+                          <button onClick={() => handleInvestNow(investment)} className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 transition-colors font-medium">Invest Now</button>
+                        )}
                         <button onClick={() => handleViewDetails(investment.id)} className="flex-1 bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors font-medium">View Details</button>
                       </div>
                     </div>

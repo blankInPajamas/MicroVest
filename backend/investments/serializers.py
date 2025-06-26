@@ -22,9 +22,15 @@ class BusinessDocumentCreateSerializer(serializers.ModelSerializer):
 # --- Main serializer for creating a new Business Pitch ---
 class BusinessPitchSerializer(serializers.ModelSerializer):
     # Use nested serializers for writable nested relationships
-    images = BusinessImageCreateSerializer(many=True, required=False)
-    videos = BusinessVideoCreateSerializer(many=True, required=False)
-    documents = BusinessDocumentCreateSerializer(many=True, required=False)
+    images = serializers.ListField(
+        child=serializers.ImageField(), write_only=True, required=False
+    )
+    videos = serializers.ListField(
+        child=serializers.FileField(), write_only=True, required=False
+    )
+    documents = serializers.ListField(
+        child=serializers.FileField(), write_only=True, required=False
+    )
 
     class Meta:
         model = Business
@@ -44,36 +50,38 @@ class BusinessPitchSerializer(serializers.ModelSerializer):
 
     # Override create method to handle nested writes for images, videos, and documents
     def create(self, validated_data):
-        images_data = validated_data.pop('images', [])
-        videos_data = validated_data.pop('videos', [])
-        documents_data = validated_data.pop('documents', [])
+        images_data = self.context.get('view').request.FILES.getlist('images')
+        videos_data = self.context.get('view').request.FILES.getlist('videos')
+        documents_data = self.context.get('view').request.FILES.getlist('documents')
+
+        validated_data.pop('images', None)
+        validated_data.pop('videos', None)
+        validated_data.pop('documents', None)
 
         business = Business.objects.create(**validated_data)
 
-        for i, image_data in enumerate(images_data):
-            BusinessImage.objects.create(business=business, **image_data, order=i)
-
+        for image_data in images_data:
+            BusinessImage.objects.create(business=business, image=image_data)
         for video_data in videos_data:
-            BusinessVideo.objects.create(business=business, **video_data)
-
+            BusinessVideo.objects.create(business=business, video_file=video_data, title=video_data.name)
         for document_data in documents_data:
-            BusinessDocument.objects.create(business=business, **document_data)
-
+            BusinessDocument.objects.create(business=business, document_file=document_data, name=document_data.name)
+            
         return business
 
 
 # --- Existing serializers for displaying business data (modified to use FileField URLs) ---
 class BusinessImageSerializer(serializers.ModelSerializer):
-    image_url = serializers.SerializerMethodField() # Frontend expects 'image_url'
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BusinessImage
         fields = ['image_url', 'order']
 
     def get_image_url(self, obj):
-        # Return the absolute URL for the image file
-        if obj.image:
-            return self.context['request'].build_absolute_uri(obj.image.url)
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url'):
+            return request.build_absolute_uri(obj.image.url)
         return None
 
 class BusinessVideoSerializer(serializers.ModelSerializer):

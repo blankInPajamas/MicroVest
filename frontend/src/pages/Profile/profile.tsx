@@ -14,7 +14,7 @@ import {
   ArrowLeft
 } from "lucide-react"
 
-import Navbar from '../../components/navbar';
+//import Navbar from '../../components/navbar';
 import Footer from '../../components/footer';
 
 // Define user state interface
@@ -297,13 +297,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar
-        userType={user.userType}
-        userName={user.username}
-        userEmail={user.email}
-        userLogin={handleLoginNav}
-        userSignUp={handleSignUpNav}
-      />
+      
 
       <div className="container mx-auto px-4 py-8 flex-grow">
         {/* Header */}

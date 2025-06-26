@@ -1,20 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useNavigate, useParams } from "react-router-dom"
-import Wavify from 'react-wavify';
+import { useState } from "react"
+import type { ChangeEvent, DragEvent } from "react"
+import { useNavigate } from "react-router-dom"
 
-const categories = [
-  "Food & Beverage",
-  "Technology",
-  "Agriculture",
-  "Services",
-  "Manufacturing",
-  "Retail",
-  "Healthcare",
-  "Education",
-]
 
+// Define TypeScript interfaces for our data structures
 interface FormData {
   businessName: string;
   tagline: string;
@@ -31,13 +22,6 @@ interface FormData {
   marketAnalysis: string;
   competitiveAdvantage: string;
   useOfFunds: string;
-  // Quick Facts
-  foundingYear: string;
-  industryExperience: string;
-  keyAchievements: string;
-  targetMarketSize: string;
-  revenueModel: string;
-  growthMetrics: string;
 }
 
 interface UploadedFile {
@@ -45,6 +29,7 @@ interface UploadedFile {
   name: string;
   size: number;
   id: string;
+  thumbnailFile?: File; // Optional thumbnail for videos
 }
 
 interface UploadedFiles {
@@ -53,7 +38,24 @@ interface UploadedFiles {
   documents: UploadedFile[];
 }
 
-export default function BusinessPitchPage({ editMode = false }: { editMode?: boolean }) {
+type DragActiveState = {
+    images: boolean;
+    videos: boolean;
+    documents: boolean;
+}
+
+const categories = [
+  "Food & Beverage",
+  "Technology",
+  "Agriculture",
+  "Services",
+  "Manufacturing",
+  "Retail",
+  "Healthcare",
+  "Education",
+]
+
+const BusinessPitchPage = () => {
   const [formData, setFormData] = useState<FormData>({
     businessName: "",
     tagline: "",
@@ -70,12 +72,6 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
     marketAnalysis: "",
     competitiveAdvantage: "",
     useOfFunds: "",
-    foundingYear: "",
-    industryExperience: "",
-    keyAchievements: "",
-    targetMarketSize: "",
-    revenueModel: "",
-    growthMetrics: "",
   })
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
@@ -84,65 +80,15 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
     documents: [],
   })
 
-  const [dragActive, setDragActive] = useState({
+  const [dragActive, setDragActive] = useState<DragActiveState>({
     images: false,
     videos: false,
     documents: false,
   })
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 4
+  const navigate = useNavigate()
 
-  const navigate = useNavigate();
-  const { id } = useParams();
-
-  // Prefill for edit mode
-  useEffect(() => {
-    if (editMode && id) {
-      const fetchBusiness = async () => {
-        try {
-          const token = localStorage.getItem('authToken');
-          const response = await fetch(`http://localhost:8000/api/businesses/${id}/`, {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-          });
-          if (!response.ok) throw new Error('Not authorized or not found');
-          const data = await response.json();
-          setFormData({
-            businessName: data.title || "",
-            tagline: data.tagline || "",
-            description: data.description || "",
-            category: data.category || "",
-            location: data.location || "",
-            fundingGoal: data.funding_goal || "",
-            minInvestment: data.min_investment || "",
-            teamSize: data.team_size || "",
-            website: data.website || "",
-            socialMedia: data.social_media || "",
-            businessPlan: data.business_plan || "",
-            financialProjections: data.financial_projections || "",
-            marketAnalysis: data.market_analysis || "",
-            competitiveAdvantage: data.competitive_advantage || "",
-            useOfFunds: data.use_of_funds || "",
-            foundingYear: data.founding_year || "",
-            industryExperience: data.industry_experience || "",
-            keyAchievements: data.key_achievements || "",
-            targetMarketSize: data.target_market_size || "",
-            revenueModel: data.revenue_model || "",
-            growthMetrics: data.growth_metrics || "",
-          });
-          // TODO: Prefill uploadedFiles if needed
-        } catch (e) {
-          setError('You are not authorized to edit this business or it does not exist.');
-        }
-      };
-      fetchBusiness();
-    }
-  }, [editMode, id]);
-
-  const [error, setError] = useState<string | null>(null);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -150,7 +96,7 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
     }))
   }
 
-  const handleDrag = (e: React.DragEvent, type: keyof typeof dragActive) => {
+  const handleDrag = (e: DragEvent<HTMLDivElement>, type: keyof DragActiveState) => {
     e.preventDefault()
     e.stopPropagation()
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -160,21 +106,25 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
     }
   }
 
-  const handleDrop = (e: React.DragEvent, type: keyof typeof dragActive) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, type: keyof DragActiveState) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive((prev) => ({ ...prev, [type]: false }))
 
-    const files = Array.from(e.dataTransfer.files)
-    handleFiles(files, type)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const files = Array.from(e.dataTransfer.files) as File[]
+        handleFiles(files, type)
+    }
   }
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>, type: keyof typeof dragActive) => {
-    const files = Array.from(e.target.files || [])
-    handleFiles(files, type)
+  const handleFileInput = (e: ChangeEvent<HTMLInputElement>, type: keyof DragActiveState) => {
+    if (e.target.files && e.target.files.length > 0) {
+        const files = Array.from(e.target.files) as File[]
+        handleFiles(files, type)
+    }
   }
 
-  const handleFiles = (files: File[], type: keyof typeof dragActive) => {
+  const handleFiles = (files: File[], type: keyof UploadedFiles) => {
     const validFiles = files.filter((file) => {
       if (type === "images") return file.type.startsWith("image/")
       if (type === "videos") return file.type.startsWith("video/")
@@ -183,183 +133,120 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
       return false
     })
 
+    const newFiles: UploadedFile[] = validFiles.map((file) => ({
+        file,
+        name: file.name,
+        size: file.size,
+        id: Math.random().toString(36).substr(2, 9),
+    }));
+
     setUploadedFiles((prev) => ({
       ...prev,
-      [type]: [
-        ...prev[type],
-        ...validFiles.map((file) => ({
-          file,
-          name: file.name,
-          size: file.size,
-          id: Math.random().toString(36).substr(2, 9),
-        })),
-      ],
+      [type]: [...prev[type], ...newFiles],
     }))
   }
 
-  const removeFile = (id: string, type: keyof typeof dragActive) => {
+  const removeFile = (id: string, type: keyof UploadedFiles) => {
     setUploadedFiles((prev) => ({
       ...prev,
       [type]: prev[type].filter((item) => item.id !== id),
     }))
   }
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes"
     const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
-    // Validate required fields
-    if (!formData.businessName || !formData.tagline || !formData.description || 
-        !formData.category || !formData.location || !formData.fundingGoal || 
-        !formData.minInvestment) {
-      alert('Please fill in all required fields marked with *')
-      return
-    }
-    
+
+    const data = new FormData()
+
+    // Append form data fields
+    data.append("title", formData.businessName)
+    data.append("tagline", formData.tagline)
+    data.append("description", formData.description)
+    data.append("category", formData.category)
+    data.append("location", formData.location)
+    data.append("funding_goal", formData.fundingGoal)
+    data.append("min_investment", formData.minInvestment)
+    data.append("team_size", formData.teamSize)
+    data.append("website", formData.website)
+    data.append("social_media", formData.socialMedia)
+    data.append("business_plan", formData.businessPlan)
+    data.append("financial_projections", formData.financialProjections)
+    data.append("market_analysis", formData.marketAnalysis)
+    data.append("competitive_advantage", formData.competitiveAdvantage)
+    data.append("use_of_funds", formData.useOfFunds)
+
+    // Append uploaded files
+    uploadedFiles.images.forEach((item, index) => {
+      data.append(`images`, item.file)
+    })
+
+    uploadedFiles.videos.forEach((item, index) => {
+      data.append(`videos`, item.file)
+    })
+
+    uploadedFiles.documents.forEach((item, index) => {
+      data.append(`documents`, item.file)
+    })
+
     try {
-      setIsSubmitting(true)
-      
-      // Create FormData object to handle file uploads
-      const formDataToSend = new FormData()
-      
-      // Add basic form fields
-      formDataToSend.append('title', formData.businessName)
-      formDataToSend.append('tagline', formData.tagline)
-      formDataToSend.append('description', formData.description)
-      formDataToSend.append('category', formData.category)
-      formDataToSend.append('location', formData.location)
-      formDataToSend.append('funding_goal', formData.fundingGoal)
-      formDataToSend.append('min_investment', formData.minInvestment)
-      formDataToSend.append('team_size', formData.teamSize)
-      formDataToSend.append('website', formData.website)
-      formDataToSend.append('social_media', formData.socialMedia)
-      formDataToSend.append('business_plan', formData.businessPlan)
-      formDataToSend.append('financial_projections', formData.financialProjections)
-      formDataToSend.append('market_analysis', formData.marketAnalysis)
-      formDataToSend.append('competitive_advantage', formData.competitiveAdvantage)
-      formDataToSend.append('use_of_funds', formData.useOfFunds)
-      
-      // Add quick facts fields
-      formDataToSend.append('founding_year', formData.foundingYear)
-      formDataToSend.append('industry_experience', formData.industryExperience)
-      formDataToSend.append('key_achievements', formData.keyAchievements)
-      formDataToSend.append('target_market_size', formData.targetMarketSize)
-      formDataToSend.append('revenue_model', formData.revenueModel)
-      formDataToSend.append('growth_metrics', formData.growthMetrics)
-      
-      // Add entrepreneur name from localStorage if available
-      const entrepreneurName = localStorage.getItem('first_name') + ' ' + localStorage.getItem('last_name')
-      if (entrepreneurName.trim()) {
-        formDataToSend.append('entrepreneur_name', entrepreneurName.trim())
-      }
-      
-      // Add images
-      uploadedFiles.images.forEach((fileObj, index) => {
-        formDataToSend.append(`images[${index}][image]`, fileObj.file)
-        formDataToSend.append(`images[${index}][order]`, index.toString())
-      })
-      
-      // Add videos
-      uploadedFiles.videos.forEach((fileObj, index) => {
-        formDataToSend.append(`videos[${index}][title]`, fileObj.name)
-        formDataToSend.append(`videos[${index}][video_file]`, fileObj.file)
-        formDataToSend.append(`videos[${index}][duration]`, '0:00') // Default duration
-      })
-      
-      // Add documents
-      uploadedFiles.documents.forEach((fileObj, index) => {
-        formDataToSend.append(`documents[${index}][name]`, fileObj.name)
-        formDataToSend.append(`documents[${index}][document_file]`, fileObj.file)
-        formDataToSend.append(`documents[${index}][size]`, fileObj.size.toString())
-      })
-      
-      // Get auth token if user is logged in
-      const token = localStorage.getItem('authToken')
-      const headers: HeadersInit = {}
+      const token = localStorage.getItem('authToken');
+      const headers: HeadersInit = {};
       
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-      
-      let response;
-      if (editMode && id) {
-        response = await fetch(`http://localhost:8000/api/businesses/${id}/update/`, {
-          method: 'PATCH',
-          headers,
-          body: formDataToSend,
-        });
+        headers['Authorization'] = `Bearer ${token}`;
       } else {
-        response = await fetch('http://localhost:8000/api/businesses/pitch/', {
-          method: 'POST',
-          headers,
-          body: formDataToSend,
-        });
+        alert('Please log in to submit a business pitch');
+        navigate('/login');
+        return;
       }
-      
+
+      const response = await fetch("http://localhost:8000/api/businesses/pitch/", {
+        method: "POST",
+        headers,
+        body: data,
+      })
+
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+        
+        // Check if token is expired
+        if (errorData.code === 'token_not_valid' || errorData.detail?.includes('expired')) {
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userId');
+          navigate('/login');
+          return;
+        }
+        
+        console.error("Submission error:", errorData)
+        alert(`Failed to submit pitch: ${JSON.stringify(errorData)}`)
+        return
       }
-      
+
       const result = await response.json()
-      alert(editMode ? 'Business updated successfully!' : 'Business pitch submitted successfully!')
-      navigate('/my-businesses')
-      
+      console.log("Pitch submitted successfully:", result)
+      alert("Pitch submitted successfully! We will review your submission and get back to you within 48 hours.")
+
       // Reset form
       setFormData({
-        businessName: "",
-        tagline: "",
-        description: "",
-        category: "",
-        location: "",
-        fundingGoal: "",
-        minInvestment: "",
-        teamSize: "",
-        website: "",
-        socialMedia: "",
-        businessPlan: "",
-        financialProjections: "",
-        marketAnalysis: "",
-        competitiveAdvantage: "",
-        useOfFunds: "",
-        foundingYear: "",
-        industryExperience: "",
-        keyAchievements: "",
-        targetMarketSize: "",
-        revenueModel: "",
-        growthMetrics: "",
+        businessName: "", tagline: "", description: "", category: "", location: "",
+        fundingGoal: "", minInvestment: "", teamSize: "",
+        website: "", socialMedia: "", businessPlan: "", financialProjections: "",
+        marketAnalysis: "", competitiveAdvantage: "", useOfFunds: "",
       })
-      
-      setUploadedFiles({
-        images: [],
-        videos: [],
-        documents: [],
-      })
-      
+      setUploadedFiles({ images: [], videos: [], documents: [] })
+
     } catch (error) {
-      console.error('Error submitting pitch:', error)
-      alert(`Error submitting pitch: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1)
-    }
-  }
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
+      console.error("Network or unexpected error:", error)
+      alert("An error occurred while submitting your pitch. Please try again.")
     }
   }
 
@@ -372,16 +259,21 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
     </svg>
   )
 
-  const Video = ({ className }: { className: string }) => (
+  const VideoIcon = ({ className }: { className: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <polygon points="23,7 16,12 23,17 23,7"></polygon>
       <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
     </svg>
   )
 
-  const FileText = ({ className }: { className: string }) => (
+  const FileTextIcon = ({ className }: { className: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+      />
       <polyline points="14,2 14,8 20,8"></polyline>
       <line x1="16" y1="13" x2="8" y2="13"></line>
       <line x1="16" y1="17" x2="8" y2="17"></line>
@@ -389,254 +281,216 @@ export default function BusinessPitchPage({ editMode = false }: { editMode?: boo
     </svg>
   )
 
-  const FileUploadArea = ({ 
-    type, 
-    title, 
-    description, 
-    acceptedTypes, 
-    icon: Icon 
-  }: { 
-    type: keyof typeof dragActive; 
-    title: string; 
-    description: string; 
-    acceptedTypes: string; 
-    icon: React.ComponentType<{ className: string }>; 
-  }) => (
-    <div
-      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-        dragActive[type] ? "border-emerald-500 bg-emerald-50" : "border-gray-300 hover:border-gray-400"
-      }`}
-      onDragEnter={(e) => handleDrag(e, type)}
-      onDragLeave={(e) => handleDrag(e, type)}
-      onDragOver={(e) => handleDrag(e, type)}
-      onDrop={(e) => handleDrop(e, type)}
-    >
-      <Icon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-600 mb-4">{description}</p>
-      <input
-        type="file"
-        multiple
-        accept={acceptedTypes}
-        onChange={(e) => handleFileInput(e, type)}
-        className="hidden"
-        id={`file-upload-${type}`}
-      />
-      <label
-        htmlFor={`file-upload-${type}`}
-        className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors cursor-pointer"
+  // FileUploadArea component
+  interface FileUploadAreaProps {
+    type: keyof UploadedFiles;
+    title: string;
+    description: string;
+    acceptedTypes: string;
+    icon: React.ComponentType<{ className: string }>;
+  }
+
+  const FileUploadArea = ({ type, title, description, acceptedTypes, icon: Icon }: FileUploadAreaProps) => (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Icon className="h-5 w-5 text-white" />
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+      </div>
+      <div
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+          dragActive[type] ? "border-white bg-gray-800" : "border-gray-600 hover:border-gray-500"
+        }`}
+        onDragEnter={(e) => handleDrag(e, type)}
+        onDragLeave={(e) => handleDrag(e, type)}
+        onDragOver={(e) => handleDrag(e, type)}
+        onDrop={(e) => handleDrop(e, type)}
       >
-        Choose Files
-      </label>
+        <svg className="h-8 w-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
+        </svg>
+        <p className="text-gray-300 mb-2">{description}</p>
+        <p className="text-sm text-gray-400 mb-4">{acceptedTypes}</p>
+        <input
+          type="file"
+          multiple
+          accept={acceptedTypes}
+          onChange={(e) => handleFileInput(e, type)}
+          className="hidden"
+          id={`file-${type}`}
+        />
+        <label
+          htmlFor={`file-${type}`}
+          className="inline-block px-4 py-2 bg-white text-black rounded-md hover:bg-gray-200 cursor-pointer transition-colors"
+        >
+          Choose Files
+        </label>
+      </div>
+
+      {uploadedFiles[type].length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-300">Uploaded Files:</h4>
+          {uploadedFiles[type].map((item) => (
+            <div key={item.id} className="flex items-center justify-between bg-gray-800 p-3 rounded-md">
+              <div className="flex items-center space-x-3">
+                <Icon className="h-4 w-4 text-gray-400" />
+                <div>
+                  <p className="text-sm text-white">{item.name}</p>
+                  <p className="text-xs text-gray-400">{formatFileSize(item.size)}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => removeFile(item.id, type)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col">
-      <main className="flex-grow w-full py-12">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              {editMode ? 'Edit Your Business Pitch' : 'Submit Your Business Pitch'}
-            </h1>
-            <p className="mt-3 text-lg text-gray-600">
-              Share your innovative business idea with potential investors and get the funding you need to grow.
+    <div className="absolute inset-0 top-16 bg-black overflow-y-auto">
+      <main className="w-full px-4 py-8">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-white mb-4">Submit Your Business Pitch</h2>
+          <p className="text-xl text-gray-300 mb-2">Present your business idea to potential investors</p>
+          <p className="text-gray-400">
+            Fill out the form below to get your business featured on our investment platform
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8 w-full">
+          <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+            <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <svg className="h-6 w-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Basic Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Business Name *</label>
+                <input type="text" name="businessName" value={formData.businessName} onChange={handleInputChange} required className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="Enter your business name" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Tagline</label>
+                <input type="text" name="tagline" value={formData.tagline} onChange={handleInputChange} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="Brief catchy tagline" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Business Description *</label>
+                <textarea name="description" value={formData.description} onChange={handleInputChange} required rows={4} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="Describe your business, what problem it solves, and your target market" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Category *</label>
+                <select name="category" value={formData.category} onChange={handleInputChange} required className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-white focus:outline-none">
+                  <option value="">Select a category</option>
+                  {categories.map((category) => ( <option key={category} value={category}> {category} </option> ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Location *</label>
+                <input type="text" name="location" value={formData.location} onChange={handleInputChange} required className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="City, State"/>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+             <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <svg className="h-6 w-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>
+                Funding Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Funding Goal ($) *</label>
+                <input type="number" name="fundingGoal" value={formData.fundingGoal} onChange={handleInputChange} required min="1000" className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="50000" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Minimum Investment ($) *</label>
+                <input type="number" name="minInvestment" value={formData.minInvestment} onChange={handleInputChange} required min="50" className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="100" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+             <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
+                <svg className="h-6 w-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>
+                Business Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Team Size</label>
+                    <input type="number" name="teamSize" value={formData.teamSize} onChange={handleInputChange} min="1" className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="5" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Website</label>
+                    <input type="url" name="website" value={formData.website} onChange={handleInputChange} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="https://yourbusiness.com" />
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Social Media</label>
+                    <input type="text" name="socialMedia" value={formData.socialMedia} onChange={handleInputChange} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="@yourbusiness" />
+                </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+            <h3 className="text-2xl font-bold text-white mb-6">Detailed Information</h3>
+            <div className="space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Business Plan Summary *</label>
+                    <textarea name="businessPlan" value={formData.businessPlan} onChange={handleInputChange} required rows={4} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="Provide a detailed summary of your business plan..."/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Financial Projections *</label>
+                    <textarea name="financialProjections" value={formData.financialProjections} onChange={handleInputChange} required rows={3} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="Describe your revenue projections..."/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Market Analysis *</label>
+                    <textarea name="marketAnalysis" value={formData.marketAnalysis} onChange={handleInputChange} required rows={3} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="Explain your target market..."/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Competitive Advantage *</label>
+                    <textarea name="competitiveAdvantage" value={formData.competitiveAdvantage} onChange={handleInputChange} required rows={3} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="What makes your business unique?"/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Use of Funds *</label>
+                    <textarea name="useOfFunds" value={formData.useOfFunds} onChange={handleInputChange} required rows={3} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:border-white focus:outline-none" placeholder="How will you use the investment funds?"/>
+                </div>
+            </div>
+          </div>
+          <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+            <h3 className="text-2xl font-bold text-white mb-6">Supporting Materials</h3>
+            <div className="space-y-8">
+                <FileUploadArea type="images" title="Business Images" description="Upload photos of your business, products, or team" acceptedTypes="image/*" icon={ImageIcon} />
+                <FileUploadArea type="videos" title="Pitch Videos" description="Upload your pitch video or product demonstrations" acceptedTypes="video/*" icon={VideoIcon} />
+                <FileUploadArea type="documents" title="Business Documents" description="Upload business plan, financial statements..." acceptedTypes=".pdf,.doc,.docx,.txt" icon={FileTextIcon} />
+            </div>
+          </div>
+          <div className="text-center pt-8">
+            <button type="submit" className="px-8 py-4 bg-white text-black text-lg font-semibold rounded-md hover:bg-gray-200 transition-colors">
+              Submit Business Pitch
+            </button>
+            <p className="text-gray-400 text-sm mt-4">
+              By submitting, you agree to our terms and conditions. We'll review your pitch within 48 hours.
             </p>
           </div>
-          
-          {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-              <p className="font-bold">Error</p>
-              <p>{error}</p>
-            </div>
-          )}
+        </form>
+      </main>
 
-          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
-            {/* New Progress Bar */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-center text-gray-800 mb-4">
-                Step {currentStep} of {totalSteps}: {["Basic Information", "Detailed Plan", "Media Uploads", "Quick Facts"][currentStep - 1]}
-              </h3>
-              <div className="w-full bg-gray-200 rounded-full h-12 relative overflow-hidden">
-                <div 
-                  className="h-full rounded-full transition-all duration-700 ease-out bg-blue-600 relative"
-                  style={{ 
-                    width: `${(currentStep / totalSteps) * 100}%`,
-                  }}
-                >
-                  <Wavify 
-                    fill='rgba(255, 255, 255, 0.5)'
-                    paused={false}
-                    options={{
-                      height: 24,
-                      amplitude: 10,
-                      speed: 0.2,
-                      points: 4
-                    }}
-                    style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '100%' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {currentStep === 1 && (
-                <section>
-                  <h2 className="text-2xl font-semibold mb-6 border-b pb-4">Basic Information</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="businessName" className="form-label">Business Name *</label>
-                      <input type="text" name="businessName" id="businessName" value={formData.businessName} onChange={handleInputChange} className="form-input" required />
-                    </div>
-                    <div>
-                      <label htmlFor="tagline" className="form-label">Tagline *</label>
-                      <input type="text" name="tagline" id="tagline" value={formData.tagline} onChange={handleInputChange} className="form-input" placeholder="Brief description of your business" required />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="description" className="form-label">Description *</label>
-                      <textarea name="description" id="description" rows={4} value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Describe your idea and what makes it unique" required></textarea>
-                    </div>
-                    <div>
-                      <label htmlFor="category" className="form-label">Category *</label>
-                      <select name="category" id="category" value={formData.category} onChange={handleInputChange} className="form-input" required>
-                        <option value="" disabled>Select a category</option>
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="location" className="form-label">Location *</label>
-                      <input type="text" name="location" id="location" value={formData.location} onChange={handleInputChange} className="form-input" placeholder="City, State/Province" required />
-                    </div>
-                    <div>
-                      <label htmlFor="fundingGoal" className="form-label">Funding Goal (USD) *</label>
-                      <input type="number" name="fundingGoal" id="fundingGoal" value={formData.fundingGoal} onChange={handleInputChange} className="form-input" min="1" required />
-                    </div>
-                    <div>
-                      <label htmlFor="minInvestment" className="form-label">Minimum Investment (USD) *</label>
-                      <input type="number" name="minInvestment" id="minInvestment" value={formData.minInvestment} onChange={handleInputChange} className="form-input" min="1" required />
-                    </div>
-                    <div>
-                      <label htmlFor="teamSize" className="form-label">Team Size</label>
-                      <input type="number" name="teamSize" id="teamSize" value={formData.teamSize} onChange={handleInputChange} className="form-input" min="1" />
-                    </div>
-                    <div>
-                      <label htmlFor="website" className="form-label">Website</label>
-                      <input type="url" name="website" id="website" value={formData.website} onChange={handleInputChange} className="form-input" placeholder="https://yourwebsite.com" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="socialMedia" className="form-label">Social Media</label>
-                      <input type="text" name="socialMedia" id="socialMedia" value={formData.socialMedia} onChange={handleInputChange} className="form-input" placeholder="e.g., twitter.com/yourbusiness" />
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {currentStep === 2 && (
-                <section>
-                  <h2 className="text-2xl font-semibold mb-6 border-b pb-4">Detailed Plan</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="businessPlan" className="form-label">Business Plan *</label>
-                      <textarea name="businessPlan" id="businessPlan" rows={6} value={formData.businessPlan} onChange={handleInputChange} className="form-input" placeholder="Provide a comprehensive overview of your business plan..." required></textarea>
-                    </div>
-                    <div>
-                      <label htmlFor="marketAnalysis" className="form-label">Market Analysis *</label>
-                      <textarea name="marketAnalysis" id="marketAnalysis" rows={4} value={formData.marketAnalysis} onChange={handleInputChange} className="form-input" placeholder="Analyze your target market, competition, and opportunities" required></textarea>
-                    </div>
-                    <div>
-                      <label htmlFor="competitiveAdvantage" className="form-label">Competitive Advantage *</label>
-                      <textarea name="competitiveAdvantage" id="competitiveAdvantage" rows={4} value={formData.competitiveAdvantage} onChange={handleInputChange} className="form-input" placeholder="Explain what makes your business unique" required></textarea>
-                    </div>
-                    <div>
-                      <label htmlFor="financialProjections" className="form-label">Financial Projections</label>
-                      <textarea name="financialProjections" id="financialProjections" rows={4} value={formData.financialProjections} onChange={handleInputChange} className="form-input" placeholder="Describe your revenue forecasts and profitability"></textarea>
-                    </div>
-                    <div>
-                      <label htmlFor="useOfFunds" className="form-label">Use of Funds *</label>
-                      <textarea name="useOfFunds" id="useOfFunds" rows={4} value={formData.useOfFunds} onChange={handleInputChange} className="form-input" placeholder="Detail how you plan to use the investment funds" required></textarea>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {currentStep === 3 && (
-                <section>
-                  <h2 className="text-2xl font-semibold mb-6 border-b pb-4">Media Uploads</h2>
-                  <div className="space-y-6">
-                    <FileUploadArea type="images" title="Business Images" description="Upload photos of your product, team, or business location" acceptedTypes="image/*" icon={ImageIcon} />
-                    <FileUploadArea type="videos" title="Business Videos" description="Upload promotional videos or product demonstrations" acceptedTypes="video/*" icon={Video} />
-                    <FileUploadArea type="documents" title="Business Documents" description="Upload business plans, financial statements, or other relevant documents" acceptedTypes=".pdf,.doc,.docx,.txt" icon={FileText} />
-                  </div>
-                </section>
-              )}
-
-              {currentStep === 4 && (
-                <section>
-                  <h2 className="text-2xl font-semibold mb-6 border-b pb-4">Quick Facts</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="foundingYear" className="form-label">Founding Year</label>
-                      <input type="number" name="foundingYear" id="foundingYear" value={formData.foundingYear} onChange={handleInputChange} className="form-input" placeholder="e.g., 2023" />
-                    </div>
-                    <div>
-                      <label htmlFor="industryExperience" className="form-label">Industry Experience (Years)</label>
-                      <input type="text" name="industryExperience" id="industryExperience" value={formData.industryExperience} onChange={handleInputChange} className="form-input" placeholder="e.g., 5+ years" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="keyAchievements" className="form-label">Key Achievements</label>
-                      <textarea name="keyAchievements" id="keyAchievements" rows={3} value={formData.keyAchievements} onChange={handleInputChange} className="form-input" placeholder="List your major accomplishments, awards, or milestones"></textarea>
-                    </div>
-                    <div>
-                      <label htmlFor="targetMarketSize" className="form-label">Target Market Size</label>
-                      <input type="text" name="targetMarketSize" id="targetMarketSize" value={formData.targetMarketSize} onChange={handleInputChange} className="form-input" placeholder="e.g., $10B market" />
-                    </div>
-                    <div>
-                      <label htmlFor="revenueModel" className="form-label">Revenue Model</label>
-                      <input type="text" name="revenueModel" id="revenueModel" value={formData.revenueModel} onChange={handleInputChange} className="form-input" placeholder="e.g., Subscription, SaaS" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="growthMetrics" className="form-label">Growth Metrics</label>
-                      <textarea name="growthMetrics" id="growthMetrics" rows={3} value={formData.growthMetrics} onChange={handleInputChange} className="form-input" placeholder="Describe your key growth metrics and KPIs"></textarea>
-                    </div>
-                  </div>
-                </section>
-              )}
-              
-              {/* Navigation Buttons */}
-              <div className="flex justify-between pt-8 border-t">
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="px-6 py-2 rounded-md font-medium transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed bg-gray-600 text-white hover:bg-gray-700"
-                >
-                  Previous
-                </button>
-                
-                {currentStep < totalSteps ? (
-                  <button
-                    type="button"
-                    onClick={nextStep}
-                    className="px-6 py-2 rounded-md font-medium transition-colors bg-gray-900 text-white hover:bg-gray-700"
-                  >
-                    Next
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-8 py-3 rounded-md font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed bg-gray-900 text-white hover:bg-gray-700"
-                  >
-                    {isSubmitting ? 'Submitting...' : (editMode ? 'Save Changes' : 'Submit Pitch')}
-                  </button>
-                )}
-              </div>
-            </form>
+      <footer className="border-t border-gray-800 bg-gray-900 mt-16">
+        <div className="w-full px-4 py-8">
+          <div className="text-center text-gray-300">
+            <p>&copy; 2024 MicroVest. Empowering small businesses through community investment.</p>
           </div>
         </div>
-      </main>
+      </footer>
     </div>
   )
-} 
+}
+
+export default BusinessPitchPage;
