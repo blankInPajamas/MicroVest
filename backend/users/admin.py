@@ -1,79 +1,60 @@
-# MicroVest/users/admin.py
+# blossomvest_backend/users/admin.py
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, FriendRequest, Message
+from .models import CustomUser # This imports your actual CustomUser MODEL
 
+# Define your custom admin configuration class with a unique name
 class CustomUserAdmin(UserAdmin):
-    # This remains the same: defines what columns appear in the list view
     list_display = (
-        'username', 'email', 'name', 'phone_number', 'user_type',
-        'is_staff', 'is_active',
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'user_type',
+        'fund',
+        'is_active',
+        'is_staff',
+        'is_superuser',
+        'date_joined',
+        'last_login',
+        # 'phone_number',    # Make sure this field exists in your CustomUser model
+        # 'profile_picture', # Make sure this field exists in your CustomUser model
     )
 
-    # --- EDIT THIS SECTION FOR THE 'CHANGE USER' FORM (editing existing users) ---
     fieldsets = (
-        # Default AbstractUser fields:
         (None, {'fields': ('username', 'password')}),
-        ('Personal information', {'fields': ('first_name', 'last_name', 'email')}),
-        # Your custom fields in a new group:
-        ('Custom User Information', {'fields': (
-            'name',          # full name field
-            'dob',
-            'phone_number',
-            'user_type',
-            'address',
-            'designation',
-            'id_document_url',
-        )}),
-        # Default AbstractUser fields related to permissions and dates:
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
-    )
-
-    # --- EDIT THIS SECTION FOR THE 'ADD USER' FORM (creating new users) ---
-    # This is slightly different because it usually doesn't show last_login or date_joined
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('username', 'email', 'password', 'password2'), # password and password2 are required for new users
+        (('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'user_type', 'fund')}),
+        (('Permissions'), {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
-        ('Personal Info', {'fields': (
-            'name',
-            'dob',
-            'phone_number',
-            'user_type',
-            'address',
-            'designation',
-            'id_document_url',
-        )}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        (('Important dates'), {'fields': ('last_login', 'date_joined')}),
+        # Add a section for your custom fields if they exist in models.py
+        # (('Custom Fields'), {'fields': ('phone_number', 'profile_picture')}),
     )
 
-    # Optional: filters on the right sidebar for list view
-    list_filter = UserAdmin.list_filter + ('user_type',)
+    search_fields = (
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'user_type'
+    )
 
-    # Optional: fields for searching
-    search_fields = ('username', 'email', 'name', 'phone_number')
+    list_filter = (
+        'is_active',
+        'is_staff',
+        'is_superuser',
+        'groups',
+        'date_joined',
+        'user_type'
+    )
 
-    # Optional: order of users in the list view
-    ordering = ('email',)
+    ordering = ('-date_joined',)
 
 
-# Register your CustomUser model with your CustomUserAdmin class
+# Register your CustomUser MODEL with your CustomUserAdmin configuration class
 admin.site.register(CustomUser, CustomUserAdmin)
 
-@admin.register(FriendRequest)
-class FriendRequestAdmin(admin.ModelAdmin):
-    list_display = ('from_user', 'to_user', 'status', 'timestamp')
-    list_filter = ('status',)
-    search_fields = ('from_user__username', 'to_user__username')
-    raw_id_fields = ('from_user', 'to_user')
-
-@admin.register(Message)
-class MessageAdmin(admin.ModelAdmin):
-    list_display = ('sender', 'receiver', 'timestamp', 'is_read')
-    list_filter = ('is_read', 'timestamp')
-    search_fields = ('sender__username', 'receiver__username', 'content')
-    raw_id_fields = ('sender', 'receiver') # Useful for selecting users easily
-    readonly_fields = ('timestamp',) # Timestamp is auto_now_add
+# Remove this line, it's redundant and incorrect:
+# admin.site.register(CustomUser)

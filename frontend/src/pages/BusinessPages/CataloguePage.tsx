@@ -1,0 +1,257 @@
+import { useState, useEffect } from "react"; // Import useEffect
+import { useNavigate } from "react-router-dom";
+import Footer from "../../components/footer";
+
+const categories = ["All Categories", "Food & Beverage", "Technology", "Agriculture", "Services", "Manufacturing"];
+
+interface Investment {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  funding_goal: number;
+  current_funding: number;
+  backers: number;
+  min_investment: number;
+  image?: string;
+}
+
+export default function CataloguePage() {
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [sortBy, setSortBy] = useState("trending");
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [investments, setInvestments] = useState<Investment[]>([]); // State to hold fetched data
+  const [loading, setLoading] = useState(true); // Loading state
+  const [error, setError] = useState<string | null>(null); // Error state
+  
+  // Investment modal state
+  const [showInvestmentModal, setShowInvestmentModal] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [investmentAmount, setInvestmentAmount] = useState("");
+  const [isInvesting, setIsInvesting] = useState(false);
+
+  useEffect(() => {
+    const fetchInvestments = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        let url = new URL("http://localhost:8000/api/businesses/"); // Your Django API URL
+        if (searchTerm) {
+          url.searchParams.append("search", searchTerm);
+        }
+        if (selectedCategory !== "All Categories") {
+          url.searchParams.append("category", selectedCategory);
+        }
+        url.searchParams.append("sort_by", sortBy);
+
+        const response = await fetch(url.toString());
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setInvestments(data.results || data); // DRF ListAPIView might return { "results": [...], "count": ... }
+      } catch (e) {
+        setError("Failed to fetch investments: " + (e instanceof Error ? e.message : 'Unknown error'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvestments();
+  }, [searchTerm, selectedCategory, sortBy]); // Re-fetch when these dependencies change
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const calculateProgress = (current: number, goal: number) => {
+    return Math.min((current / goal) * 100, 100);
+  };
+
+  const handleInvestNow = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setShowInvestmentModal(true);
+  };
+
+  const handleViewDetails = (investmentId: number) => {
+    navigate(`/business/${investmentId}`);
+  };
+
+  const handleInvestmentSubmit = async () => {
+    if (!selectedInvestment || !investmentAmount) return;
+    
+    const amount = parseFloat(investmentAmount);
+    if (isNaN(amount) || amount < selectedInvestment.min_investment) {
+      alert(`Minimum investment amount is ${formatCurrency(selectedInvestment.min_investment)}`);
+      return;
+    }
+
+    setIsInvesting(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        alert('Please log in to invest');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8000/api/invest/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          business_id: selectedInvestment.id,
+          investment_amount: amount,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Investment failed');
+      }
+
+      const result = await response.json();
+      alert(`Successfully invested ${formatCurrency(amount)}!`);
+      
+      // Refresh the investments list to show updated funding
+      window.location.reload();
+      
+      setShowInvestmentModal(false);
+      setSelectedInvestment(null);
+      setInvestmentAmount("");
+    } catch (error) {
+      alert(`Investment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsInvesting(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 bg-black text-white p-4 sm:p-6 lg:p-8">
+      <div className="w-full">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">Investment Opportunities</h2>
+          <p className="text-gray-300">Discover and invest in promising small businesses in your community</p>
+        </div>
+
+        <div className="mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input type="text" placeholder="Search businesses..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 w-full sm:w-64 border border-gray-600 bg-gray-900 text-white placeholder-gray-400 focus:border-white rounded-md p-2 outline-none" />
+            </div>
+
+            <div className="relative">
+              <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className="flex items-center justify-between w-full sm:w-48 border border-gray-600 bg-gray-900 text-white focus:border-white rounded-md p-2">
+                <div className="flex items-center">
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"></polygon></svg>
+                  <span>{selectedCategory}</span>
+                </div>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {isCategoryOpen && (
+                <div className="absolute z-10 mt-1 w-full bg-gray-900 border border-gray-600 rounded-md shadow-lg">
+                  {categories.map((category) => ( <div key={category} className="px-4 py-2 hover:bg-gray-800 cursor-pointer text-white" onClick={() => { setSelectedCategory(category); setIsCategoryOpen(false); }}>{category}</div> ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="relative">
+            <button onClick={() => setIsSelectOpen(!isSelectOpen)} className="flex items-center justify-between w-full sm:w-48 border border-gray-600 bg-gray-900 text-white focus:border-white rounded-md p-2">
+              <span>
+                {sortBy === "trending" && "Most Popular"}
+                {sortBy === "funding" && "Highest Funded"}
+                {sortBy === "goal" && "Largest Goals"}
+              </span>
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {isSelectOpen && (
+              <div className="absolute z-10 mt-1 w-full bg-gray-900 border border-gray-600 rounded-md shadow-lg">
+                <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer text-white" onClick={() => { setSortBy("trending"); setIsSelectOpen(false); }}>Most Popular</div>
+                <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer text-white" onClick={() => { setSortBy("funding"); setIsSelectOpen(false); }}>Highest Funded</div>
+                <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer text-white" onClick={() => { setSortBy("goal"); setIsSelectOpen(false); }}>Largest Goals</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {loading && <div className="text-center text-white">Loading opportunities...</div>}
+        {error && <div className="text-center text-red-500">{error}</div>}
+
+        {!loading && !error && (
+          <>
+            <div className="mb-6"><p className="text-gray-300">Showing {investments.length} opportunities</p></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
+              {investments.map((investment) => (
+                <div key={investment.id} className="border border-gray-700 bg-gray-900 hover:shadow-lg hover:shadow-gray-800/50 transition-shadow duration-300 rounded-lg">
+                  <div className="p-0">
+                    <div className="relative">
+                      <img src={investment.image || "/placeholder.svg"} alt={investment.title} className="w-full h-56 object-cover rounded-t-lg" />
+                      <span className="absolute top-3 left-3 bg-white text-black border border-gray-300 px-2 py-1 text-xs font-medium rounded-full">{investment.category}</span>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-semibold text-white mb-2">{investment.title}</h3>
+                      <p className="text-gray-400 text-sm mb-4 line-clamp-2">{investment.description}</p>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Location</span><span className="text-white">{investment.location}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Funding Goal</span><span className="text-white">{formatCurrency(investment.funding_goal)}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Raised</span><span className="text-white">{formatCurrency(investment.current_funding)}</span></div>
+                        <div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${calculateProgress(investment.current_funding, investment.funding_goal)}%` }}></div></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Progress</span><span className="text-white">{calculateProgress(investment.current_funding, investment.funding_goal).toFixed(1)}%</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Backers</span><span className="text-white">{investment.backers}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Min Investment</span><span className="text-white">{formatCurrency(investment.min_investment)}</span></div>
+                      </div>
+                      <div className="mt-6 flex gap-3">
+                        <button onClick={() => handleInvestNow(investment)} className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 transition-colors font-medium">Invest Now</button>
+                        <button onClick={() => handleViewDetails(investment.id)} className="flex-1 bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors font-medium">View Details</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <Footer />
+
+      {/* Investment Modal */}
+      {showInvestmentModal && selectedInvestment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">Invest in {selectedInvestment.title}</h2><button onClick={() => { setShowInvestmentModal(false); setSelectedInvestment(null); }} className="text-gray-400 hover:text-white">✕</button></div>
+            <div className="space-y-4 mb-6">
+              <div className="bg-gray-800 p-4 rounded-lg">
+                <div className="flex justify-between text-sm mb-2"><span className="text-gray-400">Minimum Investment:</span><span className="text-white">{formatCurrency(selectedInvestment.min_investment)}</span></div>
+                <div className="flex justify-between text-sm mb-2"><span className="text-gray-400">Current Funding:</span><span className="text-white">{formatCurrency(selectedInvestment.current_funding)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-400">Funding Goal:</span><span className="text-white">{formatCurrency(selectedInvestment.funding_goal)}</span></div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Investment Amount (USD)</label>
+                <input type="number" value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} placeholder={`Min: ${formatCurrency(selectedInvestment.min_investment)}`} className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setShowInvestmentModal(false); setSelectedInvestment(null); setInvestmentAmount(""); }} className="flex-1 bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors">Cancel</button>
+              <button onClick={handleInvestmentSubmit} disabled={isInvesting || !investmentAmount} className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isInvesting ? 'Processing...' : 'Confirm Investment'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+} 

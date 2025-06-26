@@ -1,0 +1,22 @@
+1. Connecting auth to dashboard
+2. Add investments to Blossomvest
+    - Adding more functionability to the cards
+    - Ensure the ones who create the card are able to tweak the page and delete
+    - Ensure that based on user type, the card btns vary && change the users that are owners of pitch decks to entrepreneurs
+
+3. Log creation: Working around it
+    - Report + Money addition
+
+4. Providing more functions within the app:
+    - Investors being able to increase their funding count
+    - Having a log of where they actually invested and how much
+    - Show in dashboard
+
+5. Work on the user and the funds part
+
+6. Businesses:
+    + Add user.id + balance in businesses model 
+    + Add in my businesses called fund statistics: show how much amount is invested by the which user. You can utilize chart.js to show their details in multiple formats. If the funds exceed the total count in fund tracking, show the rest at others. Add another button with name on it that links to this page.
+    + Now, within log of businesses, add a profit section which will be used to return back to the users and add in it with their model. Therefore, you would need to need to change the user model to have a fund attr which will keep track of the amount of money they hold as of the moment.
+
+    [Need to work on the profit distribution]
