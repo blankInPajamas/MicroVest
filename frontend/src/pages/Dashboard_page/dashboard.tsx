@@ -168,7 +168,11 @@ export default function DashboardPage() {
 
   // If user is entrepreneur, render the entrepreneur dashboard
   if (userType === "entrepreneur") {
-    return <EntrepreneurDashboard />;
+    return (
+      <div className="flex-1 bg-gray-50">
+        <EntrepreneurDashboard />
+      </div>
+    );
   }
 
   // Otherwise, render the investor dashboard (existing code)

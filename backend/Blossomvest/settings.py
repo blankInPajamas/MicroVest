@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'messaging',
     'logs',
     'investments_tracking',
+    'notifications',
 ]
 
 MIDDLEWARE = [

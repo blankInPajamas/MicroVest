@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Mail, Phone, MapPin, Star, Filter } from 'lucide-react';
+import { Search, Mail, Phone, MapPin, Star, Filter, X, Send } from 'lucide-react';
 
 interface Consultant {
   id: number;
@@ -15,12 +15,29 @@ interface Consultant {
   image: string;
 }
 
+interface EmailForm {
+  to: string;
+  from: string;
+  subject: string;
+  message: string;
+}
+
 const ConsultantsPage: React.FC = () => {
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [filteredConsultants, setFilteredConsultants] = useState<Consultant[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedExpertise, setSelectedExpertise] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('rating');
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
+  const [emailForm, setEmailForm] = useState<EmailForm>({
+    to: '',
+    from: '',
+    subject: '',
+    message: ''
+  });
+  const [isSending, setIsSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Mock data for consultants
   const mockConsultants: Consultant[] = [
@@ -145,8 +162,36 @@ const ConsultantsPage: React.FC = () => {
   ];
 
   const handleContact = (consultant: Consultant) => {
-    // In a real app, this would open a contact form or messaging system
-    alert(`Contact ${consultant.name} at ${consultant.email} or ${consultant.phone}`);
+    setSelectedConsultant(consultant);
+    setEmailForm({
+      to: consultant.email,
+      from: '',
+      subject: `Consultation Request - ${consultant.name}`,
+      message: `Dear ${consultant.name},\n\nI am interested in your consulting services and would like to discuss potential collaboration.\n\nBest regards,\n[Your Name]`
+    });
+    setIsEmailModalOpen(true);
+    setEmailSent(false);
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSending(true);
+    
+    // Simulate email sending
+    setTimeout(() => {
+      setIsSending(false);
+      setEmailSent(true);
+      setTimeout(() => {
+        setIsEmailModalOpen(false);
+        setEmailSent(false);
+      }, 2000);
+    }, 1500);
+  };
+
+  const closeEmailModal = () => {
+    setIsEmailModalOpen(false);
+    setSelectedConsultant(null);
+    setEmailSent(false);
   };
 
   return (
@@ -299,6 +344,126 @@ const ConsultantsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Email Modal */}
+      {isEmailModalOpen && selectedConsultant && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <img
+                  src={selectedConsultant.image}
+                  alt={selectedConsultant.name}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Contact {selectedConsultant.name}</h3>
+                  <p className="text-sm text-gray-600">{selectedConsultant.expertise.join(', ')}</p>
+                </div>
+              </div>
+              <button
+                onClick={closeEmailModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Email Form */}
+            <form onSubmit={handleEmailSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">To:</label>
+                  <input
+                    type="email"
+                    value={emailForm.to}
+                    onChange={(e) => setEmailForm(prev => ({ ...prev, to: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">From:</label>
+                  <input
+                    type="email"
+                    value={emailForm.from}
+                    onChange={(e) => setEmailForm(prev => ({ ...prev, from: e.target.value }))}
+                    placeholder="your.email@example.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject:</label>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm(prev => ({ ...prev, subject: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message:</label>
+                <textarea
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm(prev => ({ ...prev, message: e.target.value }))}
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  required
+                />
+              </div>
+
+              {/* Success Message */}
+              {emailSent && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
+                  <div className="flex items-center">
+                    <Mail className="h-5 w-5 mr-2" />
+                    <span>Email sent successfully!</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeEmailModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSending || emailSent}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {isSending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Sending...</span>
+                    </>
+                  ) : emailSent ? (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      <span>Sent!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <span>Send Email</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

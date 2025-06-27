@@ -223,7 +223,7 @@ export default function EntrepreneurDashboard() {
       <main className="flex-1">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
-          <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Entrepreneur Dashboard</h1>
@@ -243,7 +243,7 @@ export default function EntrepreneurDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="px-4 sm:px-6 lg:px-8 py-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
           <div className="border-b border-gray-200 mb-6">
             <nav className="-mb-px flex space-x-8">
               {[

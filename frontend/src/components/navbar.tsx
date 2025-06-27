@@ -5,12 +5,13 @@ import { Briefcase, MessageSquare, Bell, User as UserIcon, LogOut, Plus, Trendin
 
 // Define TypeScript interfaces for our data structures
 interface Notification {
-  id: number;
-  type: 'investment';
-  investorName: string;
-  amount: number;
-  businessName: string;
-  read: boolean;
+    id: number;
+    message: string;
+    read: boolean;
+    investorName?: string;
+    amount?: number;
+    businessName?: string;
+    type?: string;
 }
 
 const Navbar: React.FC = () => {
@@ -25,18 +26,26 @@ const Navbar: React.FC = () => {
 
     // Mock fetching notifications
     useEffect(() => {
-        const fetchNotifications = () => {
-            // In a real app, you would fetch this from your API
-            const mockNotifications: Notification[] = [
-                { id: 1, type: 'investment', investorName: 'John Doe', amount: 500, businessName: 'Eco-Friendly Eats', read: false },
-                { id: 2, type: 'investment', investorName: 'Jane Smith', amount: 1200, businessName: 'Tech Innovators Inc.', read: true },
-                { id: 3, type: 'investment', investorName: 'Sam Wilson', amount: 750, businessName: 'GreenScape Solutions', read: false },
-            ];
-            setNotifications(mockNotifications);
+        const fetchNotifications = async () => {
+            if (user.authToken) {
+                try {
+                    const response = await fetch('http://localhost:8000/api/notifications/', {
+                        headers: {
+                            'Authorization': `Bearer ${user.authToken}`,
+                        },
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setNotifications(data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching notifications:', error);
+                }
+            }
         };
 
         fetchNotifications();
-    }, []);
+    }, [user.authToken]);
 
     // Close notifications popup when clicking outside
     useEffect(() => {
@@ -162,7 +171,13 @@ const Navbar: React.FC = () => {
                                     {notifications.length > 0 ? notifications.map(notification => (
                                         <div key={notification.id} className={`p-4 border-b border-gray-100 text-sm hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}>
                                             <p>
-                                                <span className="font-bold">{notification.investorName}</span> invested <span className="font-bold">${notification.amount}</span> in your business <span className="font-bold">{notification.businessName}</span>.
+                                                {notification.message ? (
+                                                    notification.message
+                                                ) : (
+                                                    <>
+                                                        <span className="font-bold">{notification.investorName}</span> invested <span className="font-bold">${notification.amount}</span> in your business <span className="font-bold">{notification.businessName}</span>.
+                                                    </>
+                                                )}
                                             </p>
                                         </div>
                                     )) : (
