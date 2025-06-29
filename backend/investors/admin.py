@@ -1,32 +1,39 @@
+# investors/admin.py
+
 from django.contrib import admin
 from .models import Industry, InvestorProfile
 
-@admin.register(Industry)
-class IndustryAdmin(admin.ModelAdmin):
-    list_display = ['name']
-    search_fields = ['name']
-    ordering = ['name']
+# Register Industry model
+admin.site.register(Industry)
 
+# Admin configuration for InvestorProfile
 @admin.register(InvestorProfile)
 class InvestorProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'investment_range_min', 'investment_range_max', 'risk_tolerance', 'accredited_investor_status', 'created_at']
-    list_filter = ['risk_tolerance', 'accredited_investor_status', 'created_at']
-    search_fields = ['user__username', 'user__email']
-    readonly_fields = ['created_at', 'updated_at']
-    filter_horizontal = ['preferred_industries']
-    
+    list_display = (
+        'user',
+        'min_investment',       # Corrected field name
+        'max_investment',       # Corrected field name
+        'risk_tolerance',
+        'accredited_investor_status',
+        'get_investment_focus_names',
+    )
+    search_fields = ('user__username', 'user__email', 'bio')
+    list_filter = (
+        'risk_tolerance',
+        'accredited_investor_status',
+        'investment_focus',
+    )
+    # Corrected field name for filter_horizontal
+    filter_horizontal = ('investment_focus',)
+
     fieldsets = (
-        ('User Information', {
-            'fields': ('user',)
+        (None, {
+            'fields': ('user', 'bio')
         }),
-        ('Investment Preferences', {
-            'fields': ('investment_range_min', 'investment_range_max', 'risk_tolerance', 'preferred_industries')
+        ('Investment Details', {
+            'fields': ('min_investment', 'max_investment', 'investment_focus', 'risk_tolerance', 'accredited_investor_status')
         }),
-        ('Accreditation', {
-            'fields': ('accredited_investor_status', 'proof_of_accreditation')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
+        ('Contact & Social', {
+            'fields': ('website', 'linkedin_profile')
         }),
     )
