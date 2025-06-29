@@ -72,11 +72,16 @@ class InvestorProfile(models.Model):
         null=True,
         help_text="Investor's tolerance for risk."
     )
-
     ACCREDITED_CHOICES = (
         ('yes', 'Yes'),
         ('no', 'No'),
         ('pending', 'Pending'),
+    )
+    current_fund = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+        help_text='Current available funds for the investor to deploy.'
     )
     accredited_investor_status = models.CharField(
         max_length=10,
@@ -84,7 +89,6 @@ class InvestorProfile(models.Model):
         default='no',
         help_text="Accredited investor status."
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
