@@ -331,9 +331,9 @@ export default function EntrepreneurDashboard() {
         {/* Sidebar */}
         <Sidebar active="Overview" />
         {/* Main Content */}
-        <main className="flex-1 flex flex-col lg:flex-row gap-8 max-w-full">
+        <main className="flex-1 flex flex-col lg:flex-row lg:gap-8 p-6 lg:p-8">
           {/* Center Main Area */}
-          <section className="flex-1 px-6 py-8 max-w-5xl mx-auto">
+          <section className="flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-10 gap-4">
               <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
               <div className="flex gap-4">
