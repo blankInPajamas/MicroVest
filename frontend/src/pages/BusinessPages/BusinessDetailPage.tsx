@@ -18,6 +18,7 @@ import {
   Eye,
   Share2,
   Bookmark,
+  BookmarkCheck,
   ExternalLink,
   Calendar,
   MapPin,
@@ -25,16 +26,20 @@ import {
   Award,
   ChartBar,
   LogIn,
-  Bot
+  Bot,
+  Trash2
 } from "lucide-react";
 import Footer from "../../components/footer";
 import { useUser } from "../../context/UserContext";
+import Notification from '../../components/Notification';
+import AIChatPopup from '../../components/AIChatPopup';
 
 interface BusinessData {
   id: number;
   title: string;
   entrepreneur_name?: string;
   entrepreneur_full_name?: string;
+  entrepreneur_user_id?: number;
   tagline: string;
   description: string;
   category: string;
@@ -62,6 +67,15 @@ interface BusinessData {
   documents: Array<{ name: string; file_url: string; size: string }>;
   user: number | string;
   deadline: string;
+  user_investment_amount: number;
+  user_investment_percentage: number;
+}
+
+interface NotificationState {
+  isVisible: boolean;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message: string;
 }
 
 type ActiveSection = "overview" | "financials" | "market" | "team" | "documents" | "videos";
@@ -74,24 +88,48 @@ export default function BusinessDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [investmentAmount, setInvestmentAmount] = useState(0);
+  const [investmentAmount, setInvestmentAmount] = useState('');
   const [activeSection, setActiveSection] = useState<ActiveSection>("overview");
+  const [isInvesting, setIsInvesting] = useState(false);
+  const [notification, setNotification] = useState<NotificationState>({
+    isVisible: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
+  const [isSaved, setIsSaved] = useState(false);
+  const [aiChatOpen, setAIChatOpen] = useState(false);
 
   const currentUserId = localStorage.getItem('userId');
-  const isOwner = businessData && currentUserId && String(businessData.user) === String(currentUserId);
+  const isOwner = businessData && currentUserId && businessData.user.toString() === currentUserId;
+  const isEntrepreneur = user.userType === 'entrepreneur';
 
   useEffect(() => {
     const fetchBusinessDetails = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`http://localhost:8000/api/businesses/${id}/`);
+        // Get authentication token
+        const token = localStorage.getItem('authToken');
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add authorization header if token exists
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`http://localhost:8000/api/businesses/${id}/`, {
+          headers: headers
+        });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log('Fetched business detail data:', data);
         setBusinessData(data);
-        setInvestmentAmount(data.min_investment || 0);
+        setInvestmentAmount(data.min_investment.toString());
       } catch (e) {
         setError("Failed to fetch business details: " + (e instanceof Error ? e.message : 'Unknown error'));
       } finally {
@@ -102,6 +140,24 @@ export default function BusinessDetailPage() {
     if (id) {
       fetchBusinessDetails();
     }
+  }, [id]);
+
+  useEffect(() => {
+    // Fetch saved state for this business
+    const fetchSaved = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token || !id) return;
+      try {
+        const response = await fetch('http://localhost:8000/api/saved-businesses/', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsSaved(data.some((item: any) => item.business.id === parseInt(id)));
+        }
+      } catch (e) { /* ignore */ }
+    };
+    fetchSaved();
   }, [id]);
 
   const calculateDaysLeft = (deadline: string) => {
@@ -137,48 +193,94 @@ export default function BusinessDetailPage() {
     }
   };
 
+  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
+    setNotification({
+      isVisible: true,
+      type,
+      title,
+      message
+    });
+  };
+
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, isVisible: false }));
+  };
+
+  const handleDelete = async () => {
+    if (!businessData) return;
+
+    const confirmed = window.confirm(`Are you sure you want to delete "${businessData.title}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/businesses/${businessData.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        showNotification('success', 'Business Deleted', `${businessData.title} has been successfully deleted.`);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        showNotification('error', 'Delete Failed', errorData.message || 'Failed to delete business. Please try again.');
+      }
+    } catch (error) {
+      showNotification('error', 'Delete Failed', 'An error occurred while deleting the business. Please try again.');
+    }
+  };
+
+  const handleMessageEntrepreneur = () => {
+    if (!businessData?.entrepreneur_user_id) {
+      showNotification('error', 'Error', 'Entrepreneur information not available.');
+      return;
+    }
+    
+    // Navigate to messaging page with the entrepreneur
+    navigate(`/messages?user=${businessData.entrepreneur_user_id}`);
+  };
+
   const handleInvest = async () => {
     if (!businessData) return;
 
-    if (investmentAmount <= 0) {
-        alert("Please enter a positive investment amount.");
-        return;
+    const amount = parseFloat(investmentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showNotification('error', 'Invalid Amount', 'Please enter a positive investment amount.');
+      return;
     }
 
     const remainingGoal = businessData.funding_goal - businessData.current_funding;
-    if (investmentAmount > remainingGoal) {
-        alert(`Your investment of ${formatCurrency(investmentAmount)} exceeds the remaining funding goal of ${formatCurrency(remainingGoal)}. Please invest ${formatCurrency(remainingGoal)} or less.`);
-        setInvestmentAmount(remainingGoal);
-        return;
+    if (amount > remainingGoal) {
+      showNotification('error', 'Amount Exceeds Goal', `Your investment of ${formatCurrency(amount)} exceeds the remaining funding goal of ${formatCurrency(remainingGoal)}. Please invest ${formatCurrency(remainingGoal)} or less.`);
+      setInvestmentAmount(remainingGoal.toString());
+      return;
     }
 
-    alert(`Submitting investment of ${formatCurrency(investmentAmount)} for ${businessData.title}...`);
+    showNotification('info', 'Processing Investment', `Submitting investment of ${formatCurrency(amount)} for ${businessData.title}...`);
 
+    setIsInvesting(true);
     try {
-        const response = await fetch('http://localhost:8000/api/invest/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.authToken}`,
-            },
-            body: JSON.stringify({
-                business_id: businessData.id,
-                investment_amount: investmentAmount,
-            }),
-        });
+      const response = await fetch('http://localhost:8000/api/invest/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          business_id: businessData.id,
+          investment_amount: amount,
+        }),
+      });
 
         if (!response.ok) {
-            let errorData: any = {};
-            try {
-                errorData = await response.json();
-            } catch (jsonError) {
-                console.warn("Could not parse error JSON from backend:", jsonError);
-                errorData = { message: `Server responded with status ${response.status} but no valid JSON.` };
-            }
+            const errorData = await response.json();
             
-            // Check if token is expired
             if (errorData.code === 'token_not_valid' || errorData.detail?.includes('expired')) {
-                alert('Your session has expired. Please log in again.');
+                showNotification('error', 'Session Expired', 'Your session has expired. Please log in again.');
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('userId');
                 navigate('/login');
@@ -186,7 +288,7 @@ export default function BusinessDetailPage() {
             }
             
             console.error("Investment failed:", errorData);
-            alert(`Investment failed: ${errorData.message || errorData.detail || JSON.stringify(errorData)}`);
+            showNotification('error', 'Investment Failed', `Investment failed: ${errorData.message || errorData.detail || JSON.stringify(errorData)}`);
             return;
         }
 
@@ -196,42 +298,89 @@ export default function BusinessDetailPage() {
                 updatedBusiness = await response.json();
             } catch (jsonError) {
                 console.error("Error parsing successful response JSON:", jsonError);
-                alert("Investment succeeded but there was an issue receiving confirmation data. Please refresh.");
-                setBusinessData(prevData => prevData ? {
-                    ...prevData,
-                    current_funding: prevData.current_funding + investmentAmount,
-                    backers: prevData.backers + 1,
-                } : null);
+                showNotification('warning', 'Partial Success', "Investment succeeded but there was an issue receiving confirmation data. Please refresh.");
+                // Refresh business data to get updated investment info
+                const refreshResponse = await fetch(`http://localhost:8000/api/businesses/${businessData.id}/`, {
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                  }
+                });
+                if (refreshResponse.ok) {
+                    const refreshedData = await refreshResponse.json();
+                    setBusinessData(refreshedData);
+                }
                 return;
             }
         } else if (response.status === 204) {
             console.log("Investment successful, no content returned.");
-            setBusinessData(prevData => prevData ? {
-                ...prevData,
-                current_funding: prevData.current_funding + investmentAmount,
-                backers: prevData.backers + 1,
-            } : null);
-            alert(`Investment of ${formatCurrency(investmentAmount)} successful! Thank you for backing ${businessData.title}!`);
+            // Refresh business data to get updated investment info
+            const refreshResponse = await fetch(`http://localhost:8000/api/businesses/${businessData.id}/`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+              }
+            });
+            if (refreshResponse.ok) {
+                const refreshedData = await refreshResponse.json();
+                setBusinessData(refreshedData);
+            }
+            showNotification('success', 'Investment Successful', `Investment of ${formatCurrency(amount)} successful! Thank you for backing ${businessData.title}!`);
             return;
         } else {
             console.warn("Unexpected successful response status:", response.status);
-            alert("Investment completed with an unexpected server response. Please refresh the page.");
+            showNotification('warning', 'Unexpected Response', "Investment completed with an unexpected server response. Please refresh the page.");
             return;
         }
 
         console.log("Investment successful:", updatedBusiness);
 
-        setBusinessData(prevData => prevData ? {
-            ...prevData,
-            current_funding: updatedBusiness.current_funding,
-            backers: updatedBusiness.backers,
-        } : null);
+        // Refresh business data to get updated investment info
+        const refreshResponse = await fetch(`http://localhost:8000/api/businesses/${businessData.id}/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        if (refreshResponse.ok) {
+            const refreshedData = await refreshResponse.json();
+            setBusinessData(refreshedData);
+        } else {
+            // Fallback to updating with response data
+            setBusinessData(prevData => prevData ? {
+                ...prevData,
+                current_funding: updatedBusiness.current_funding,
+                backers: updatedBusiness.backers,
+            } : null);
+        }
 
-        alert(`Investment of ${formatCurrency(investmentAmount)} successful! Thank you for backing ${businessData.title}!`);
+        showNotification('success', 'Investment Successful', `Investment of ${formatCurrency(amount)} successful! Thank you for backing ${businessData.title}!`);
 
     } catch (error) {
         console.error("Network or unexpected error during investment:", error);
-        alert("An error occurred while processing your investment. Please try again.");
+        showNotification('error', 'Network Error', "An error occurred while processing your investment. Please try again.");
+    } finally {
+        setIsInvesting(false);
+        setInvestmentAmount('');
+    }
+  };
+
+  const handleToggleSave = async () => {
+    const token = localStorage.getItem('authToken');
+    if (!token || !id) {
+      showNotification('error', 'Login Required', 'Please log in to save businesses.');
+      return;
+    }
+    try {
+      const method = isSaved ? 'DELETE' : 'POST';
+      const response = await fetch(`http://localhost:8000/api/businesses/${id}/toggle-save/`, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok || response.status === 201) {
+        setIsSaved(!isSaved);
+      } else {
+        showNotification('error', 'Error', 'Could not update saved status.');
+      }
+    } catch (e) {
+      showNotification('error', 'Error', 'Could not update saved status.');
     }
   };
 
@@ -458,13 +607,34 @@ export default function BusinessDetailPage() {
     <div className="flex-1 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
             <ArrowLeft size={16} /> Back to opportunities
           </button>
-          <h1 className="text-4xl font-bold text-gray-900">{title}</h1>
-          <p className="text-lg text-gray-500 mt-2">{tagline}</p>
+          <button
+            className="ml-auto"
+            title={isSaved ? 'Unsave Business' : 'Save Business'}
+            onClick={handleToggleSave}
+          >
+            {isSaved ? (
+              <BookmarkCheck className="w-7 h-7 text-emerald-600 fill-emerald-600" />
+            ) : (
+              <Bookmark className="w-7 h-7 text-gray-700 hover:text-emerald-600" />
+            )}
+          </button>
         </div>
+        <h1 className="text-4xl font-bold text-gray-900">{title}</h1>
+        <p className="text-lg text-gray-500 mt-2">{tagline}</p>
+        
+        {/* Active indicator for fully funded businesses */}
+        {current_funding === funding_goal && (
+          <div className="mt-4 flex items-center gap-2">
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              Active Business
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-8">
           {/* Sidebar */}
@@ -481,15 +651,95 @@ export default function BusinessDetailPage() {
                     <span className="text-gray-500">raised of {formatCurrency(funding_goal)}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 text-center mb-6">
+                <div className="grid grid-cols-2 gap-4 text-center mb-6">
                   <div>
                     <p className="font-bold text-2xl text-gray-900">{backers}</p>
                     <p className="text-sm text-gray-500">Investors</p>
                   </div>
+                  <div>
+                    <p className="font-bold text-2xl text-orange-600">{formatCurrency(funding_goal - current_funding)}</p>
+                    <p className="text-sm text-gray-500">Remaining</p>
+                  </div>
                 </div>
 
+                {/* User Investment Information */}
+                {businessData.user_investment_amount > 0 && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-2">Your Investment</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Amount Invested:</span>
+                        <span className="font-semibold text-blue-900">{formatCurrency(businessData.user_investment_amount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Your Share:</span>
+                        <span className="font-semibold text-blue-900">{businessData.user_investment_percentage}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Investment Actions for Investors */}
+                {!isOwner && !isEntrepreneur && user.isAuthenticated && businessData.user_investment_amount > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="font-semibold text-lg mb-4">Investment Actions</h3>
+                    <div className="space-y-3">
+                      <button 
+                        onClick={() => navigate(`/businesses/${businessData.id}/logs`)}
+                        disabled={businessData.current_funding !== businessData.funding_goal}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          businessData.current_funding === businessData.funding_goal
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <FileText className="h-4 w-4" />
+                        View Logs
+                      </button>
+                      <button 
+                        onClick={() => navigate(`/business/${businessData.id}/fund-statistics`)}
+                        disabled={businessData.current_funding !== businessData.funding_goal}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          businessData.current_funding === businessData.funding_goal
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <BarChart className="h-4 w-4" />
+                        Statistics
+                      </button>
+                    </div>
+                    {businessData.current_funding !== businessData.funding_goal && (
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        Logs and statistics will be available once the business is fully funded
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {isOwner ? (
-                  <div className="text-center bg-gray-100 text-gray-700 py-3 px-4 rounded-lg text-sm">You are the owner of this business.</div>
+                  <div className="space-y-4">
+                    <div className="text-center bg-gray-100 text-gray-700 py-3 px-4 rounded-lg text-sm">You are the owner of this business.</div>
+                    <button 
+                      onClick={() => navigate(`/business/${businessData.id}/fund-statistics`)}
+                      className="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-900 transition-colors"
+                    >
+                      View Investors
+                    </button>
+                  </div>
+                ) : isEntrepreneur ? (
+                  <div className="space-y-4">
+                    <div className="text-center bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <MessageSquare className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                      <p className="text-sm text-blue-800 mb-3">Connect with the business owner</p>
+                      <button 
+                        onClick={() => navigate(`/messages?user=${businessData.user}`)}
+                        className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Message Owner
+                      </button>
+                    </div>
+                  </div>
                 ) : !user.isAuthenticated ? (
                   <div className="space-y-4">
                     <div className="text-center bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -497,7 +747,7 @@ export default function BusinessDetailPage() {
                       <p className="text-sm text-blue-800 mb-3">Sign in to invest in this business</p>
                       <button 
                         onClick={() => navigate('/login')}
-                        className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                        className="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-900 transition-colors"
                       >
                         Sign In to Invest
                       </button>
@@ -515,9 +765,9 @@ export default function BusinessDetailPage() {
                           type="number"
                           name="investment-amount"
                           id="investment-amount"
-                          className="w-full pl-7 pr-12 py-3 px-4 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full pl-7 pr-12 py-3 px-4 border border-gray-300 rounded-lg focus:ring-gray-500 focus:border-gray-500"
                           value={investmentAmount}
-                          onChange={(e) => setInvestmentAmount(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => setInvestmentAmount(e.target.value)}
                           min={min_investment}
                           placeholder={formatCurrency(min_investment)}
                         />
@@ -528,43 +778,71 @@ export default function BusinessDetailPage() {
                     </div>
                     <button 
                       onClick={handleInvest}
-                      className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                      disabled={investmentAmount < min_investment}
+                      disabled={parseFloat(investmentAmount) < min_investment || current_funding === funding_goal}
+                      className={`w-full font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        current_funding === funding_goal
+                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                          : businessData.user_investment_amount > 0 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'bg-gray-800 text-white hover:bg-gray-900'
+                      }`}
                     >
-                      Invest Now
+                      {current_funding === funding_goal 
+                        ? 'Fully Funded' 
+                        : businessData.user_investment_amount > 0 
+                          ? 'Invest More' 
+                          : 'Invest Now'
+                      }
                     </button>
                   </div>
                 )}
                 <p className="text-center text-sm text-gray-500 mt-2">Minimum investment: {formatCurrency(min_investment)}</p>
               </div>
 
-              {/* Entrepreneur Info */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="font-semibold text-lg mb-4">Meet the Entrepreneur</h3>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xl text-gray-600">
-                    {entrepreneur_full_name ? entrepreneur_full_name.charAt(0) : '?'}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{entrepreneur_full_name || 'Unknown Entrepreneur'}</p>
-                    <button onClick={() => navigate(`/messages?userId=${businessData.user}`)} className="text-sm text-blue-600 hover:underline">Message</button>
+              {/* Entrepreneur Information */}
+              {businessData.entrepreneur_full_name && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="font-semibold text-lg mb-4">Entrepreneur</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <span className="text-gray-600 font-semibold text-sm">
+                          {businessData.entrepreneur_full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{businessData.entrepreneur_full_name}</p>
+                        <p className="text-sm text-gray-500">Business Owner</p>
+                      </div>
+                    </div>
+                    {businessData.entrepreneur_user_id && !isOwner && (
+                      <button 
+                        onClick={handleMessageEntrepreneur}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Message Entrepreneur
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Action Buttons */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="font-semibold text-lg mb-4">Actions</h3>
                 <div className="space-y-3">
-                  <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                    <Bookmark className="h-4 w-4" />
-                    Save to Watchlist
+                  <button 
+                    onClick={() => navigate('/consultants')}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                  >
+                    <Users className="h-4 w-4" />
+                    Consult Expert
                   </button>
-                  <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                    <Share2 className="h-4 w-4" />
-                    Share
-                  </button>
-                  <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <button 
+                    onClick={() => setAIChatOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                  >
                     <Bot className="h-4 w-4" />
                     Talk with AI
                   </button>
@@ -578,6 +856,15 @@ export default function BusinessDetailPage() {
                       <ExternalLink className="h-4 w-4" />
                       Visit Website
                     </a>
+                  )}
+                  {isOwner && (
+                    <button 
+                      onClick={handleDelete}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Business
+                    </button>
                   )}
                 </div>
               </div>
@@ -634,6 +921,20 @@ export default function BusinessDetailPage() {
       </div>
       <div className="h-24" />
       <Footer />
+      <Notification
+        isVisible={notification.isVisible}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={hideNotification}
+      />
+      
+      {/* AI Chat Popup */}
+      <AIChatPopup
+        isOpen={aiChatOpen}
+        onClose={() => setAIChatOpen(false)}
+        businessData={businessData || undefined}
+      />
     </div>
   );
 } 

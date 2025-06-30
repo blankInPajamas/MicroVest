@@ -14,6 +14,8 @@ import CataloguePage from './pages/BusinessPages/CataloguePage'
 import BusinessDetailPage from './pages/BusinessPages/BusinessDetailPage'
 import BusinessPitchPage from './pages/BusinessPages/BusinessPitchPage'
 import MyBusinessesPage from './pages/Dashboard_page/myBusinessesPage'
+import MyInvestmentsPage from './pages/Dashboard_page/myInvestmentsPage'
+import InvestmentStatisticsPage from './pages/Dashboard_page/InvestmentStatisticsPage'
 import CreateLogPage from './pages/BusinessPages/CreateLogPage'
 import BusinessLogsPage from './pages/BusinessPages/BusinessLogsPage'
 import FundStatisticsPage from './pages/BusinessPages/FundStatisticsPage'
@@ -30,7 +32,6 @@ import ConsultantsPage from './pages/ConsultantsPage'
 
 // Layout
 import MainLayout from './components/MainLayout'
-import AddFund from './pages/addfunds'
 
 function App() {
 
@@ -49,6 +50,8 @@ function App() {
         <Route path='/business/:id' element={<BusinessDetailPage />} />
         <Route path='/pitch' element={<BusinessPitchPage />} />
         <Route path='/my-businesses' element={<MyBusinessesPage />} />
+        <Route path='/my-investments' element={<MyInvestmentsPage />} />
+        <Route path='/investment-statistics' element={<InvestmentStatisticsPage />} />
         <Route path='/edit-business/:id' element={<BusinessPitchPage editMode={true} />} />
         <Route path='/documentation' element={<DocumentationPage />} />
         <Route path='/messages' element={<MessagingPage />} />
@@ -57,7 +60,6 @@ function App() {
         <Route path='/business/:businessId/fund-statistics' element={<FundStatisticsPage />} />
         <Route path='/profit-distributions' element={<ProfitDistributionsDashboard />} />
         <Route path='/consultants' element={<ConsultantsPage />} />
-        <Route path="/add-funds" element={<AddFund />} />
       </Route>
     </Routes>
   )

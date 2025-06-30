@@ -8,9 +8,49 @@ import {
   FileText,
   Monitor,
   Plus,
-  Calendar as CalendarIcon,
   Building,
+  Bookmark,
+  Users,
+  MessageSquare,
+  BookOpen, // New: for blogs section
+  ArrowRight // New: for read more button
 } from "lucide-react"
+import MyInvestorsModal from "../../components/MyInvestorsModal"
+
+// Interface for Blog Post
+interface BlogPost {
+  id: number;
+  title: string;
+  excerpt: string;
+  date: string;
+  imageUrl: string;
+  link: string; // External link for the blog post
+}
+
+// Blog Card Component
+const BlogCard: React.FC<{ blog: BlogPost }> = ({ blog }) => {
+  return (
+    <div className="bg-white rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.05)] overflow-hidden">
+      <img src={blog.imageUrl} alt={blog.title} className="w-full h-36 object-cover" />
+      <div className="p-4">
+        <h4 className="font-semibold text-gray-900 mb-2 leading-tight">{blog.title}</h4>
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{blog.excerpt}</p>
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>{blog.date}</span>
+          <a
+            href={blog.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center"
+          >
+            Read More <ArrowRight className="w-3 h-3 ml-1" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 interface Business {
   id: number;
@@ -24,6 +64,7 @@ interface Business {
   image?: string;
   created_at: string;
   entrepreneur_name: string;
+  deadline: string;
 }
 
 interface Investment {
@@ -63,13 +104,28 @@ interface EntrepreneurMetrics {
   total_assets: number;
 }
 
-const schedule = [
-  { title: "Investor Meeting", time: "10:00 AM - 11:00 AM" },
-  { title: "Team Check-in", time: "2:00 PM - 3:00 PM" },
-  { title: "Pitch Deck Review", time: "4:00 PM - 5:00 PM" },
-]
+interface Investor {
+  investor_id: number;
+  investor_name: string;
+  investor_username: string;
+  investor_email: string;
+  total_invested_in_my_businesses: number;
+  total_businesses_invested_in: number;
+  investments: {
+    business_id: number;
+    business_title: string;
+    business_category: string;
+    amount_invested: number;
+    invested_at: string;
+    share_percentage: number;
+  }[];
+}
 
-function Sidebar({ active = "Overview" }) {
+function Sidebar({ active = "Overview", savedBusinesses, onOpenInvestors }: { 
+  active?: string, 
+  savedBusinesses: { id: number, title: string }[],
+  onOpenInvestors: () => void
+}) {
   const navigate = useNavigate();
   
   const nav = [
@@ -80,71 +136,58 @@ function Sidebar({ active = "Overview" }) {
   ]
   return (
     <aside className="hidden md:flex flex-col w-72 min-h-full bg-white py-8 px-6 gap-3 shadow-[2px_0_20px_rgba(0,0,0,0.08)]">
-      {nav.map((item) => (
-        <button
-          key={item.label}
-          onClick={item.action}
-          className={`flex items-center gap-4 px-5 py-3 rounded-xl text-base font-medium transition-colors ${
-            active === item.label
-              ? "bg-gray-100 text-black"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          <item.icon className="w-6 h-6" />
-          {item.label}
-        </button>
-      ))}
-    </aside>
-  )
-}
-
-function CalendarWidget() {
-  // Simple static July 2024 calendar for demo
-  const days = ["S", "M", "T", "W", "T", "F", "S"]
-  const dates = Array(31)
-    .fill(0)
-    .map((_, i) => i + 1)
-  return (
-    <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] p-8 mr-8 lg:mr-16">
-      <div className="flex items-center justify-between mb-6">
-        <span className="font-bold text-xl">July 2024</span>
-        <CalendarIcon className="w-6 h-6 text-gray-400" />
-      </div>
-      <div className="grid grid-cols-7 text-sm text-gray-400 mb-3">
-        {days.map((d) => (
-          <div key={d} className="text-center font-medium">{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-3">
-        {Array(5).fill(null).map((_, i) => <div key={i}></div>)}
-        {dates.map((d) => (
-          <div
-            key={d}
-            className={`w-12 h-12 flex items-center justify-center rounded-full text-base font-medium ${
-              d === 5 ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"
+      <div>
+        {nav.map((item) => (
+          <button
+            key={item.label}
+            onClick={item.action}
+            className={`flex items-center gap-4 px-5 py-3 rounded-xl text-base font-medium transition-colors ${
+              active === item.label
+                ? "bg-gray-100 text-black"
+                : "text-gray-600 hover:bg-gray-50"
             }`}
           >
-            {d}
-          </div>
+            <item.icon className="w-6 h-6" />
+            {item.label}
+          </button>
         ))}
       </div>
-    </div>
-  )
-}
+      
+      {/* My Investors Button */}
+      <div className="mt-8 pt-8 border-t border-gray-200">
+        <button
+          onClick={onOpenInvestors}
+          className="flex items-center gap-4 px-5 py-3 rounded-xl text-base font-medium transition-colors text-gray-600 hover:bg-gray-50 w-full"
+        >
+          <UsersIcon className="w-6 h-6 text-blue-500" />
+          My Investors
+        </button>
+      </div>
 
-function ScheduleWidget() {
-  return (
-    <div className="bg-white rounded-xl border p-4">
-      <div className="font-semibold mb-3">Schedule</div>
-      <ul className="space-y-2">
-        {schedule.map((item) => (
-          <li key={item.title}>
-            <div className="font-medium text-sm text-gray-900">{item.title}</div>
-            <div className="text-xs text-gray-500">{item.time}</div>
-          </li>
-        ))}
-      </ul>
-    </div>
+      {/* Saved Section */}
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="flex items-center gap-2 mb-2 text-gray-700 font-semibold">
+          <Bookmark className="w-5 h-5 text-emerald-500" />
+          Saved
+        </div>
+        {savedBusinesses.length === 0 ? (
+          <div className="text-xs text-gray-400">No saved businesses</div>
+        ) : (
+          <ul className="space-y-1">
+            {savedBusinesses.map(biz => (
+              <li key={biz.id}>
+                <button
+                  className="text-sm text-blue-700 hover:underline hover:text-emerald-600"
+                  onClick={() => navigate(`/business/${biz.id}`)}
+                >
+                  {biz.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
   )
 }
 
@@ -155,7 +198,39 @@ export default function EntrepreneurDashboard() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [metrics, setMetrics] = useState<EntrepreneurMetrics | null>(null)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
+  const [savedBusinesses, setSavedBusinesses] = useState<{ id: number, title: string }[]>([])
+  const [investors, setInvestors] = useState<Investor[]>([])
+  const [isInvestorsModalOpen, setIsInvestorsModalOpen] = useState(false)
   const navigate = useNavigate()
+
+  // Mock Blog Data - UPDATED TITLES AND LINKS
+  const mockBlogs: BlogPost[] = [
+    {
+      id: 1,
+      title: "Is This the Reason Your Startup Is Struggling to Make Sales?",
+      excerpt: "Uncover common pitfalls and strategies to boost your sales performance.",
+      date: "July 01, 2025",
+      imageUrl: "/src/assets/4.jpg", 
+      link: "https://medium.com/entrepreneur-s-handbook/is-this-the-reason-youre-startup-is-struggling-to-make-sales-772ff8a88c1d"
+    },
+    {
+      id: 2,
+      title: "I Was Once in Charge of Sales for a Startup. These Are My Tips for Founders.",
+      excerpt: "Expert advice from a sales veteran on how founders can excel in early-stage sales.",
+      date: "June 28, 2025",
+      imageUrl: "/src/assets/5.jpg", 
+      link: "https://medium.com/groveventures/i-was-once-in-charge-of-sales-for-a-startup-these-are-my-tips-for-founders-c69e87c12e2b"
+    },
+    {
+      id: 3,
+      title: "Starting a Business: Lessons from My Journey and Failures",
+      excerpt: "Insights and wisdom gained from the entrepreneurial journey, including setbacks and triumphs.",
+      date: "June 25, 2025",
+      imageUrl: "/src/assets/6.jpg", 
+      link: "https://medium.com/@rociofernn/starting-a-business-lessons-from-my-journey-and-failures-69fa0b0aed9c"
+    },
+  ];
+
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -280,6 +355,19 @@ export default function EntrepreneurDashboard() {
           setMetrics(metricsData)
         }
 
+        // Fetch investors for entrepreneur's businesses
+        const investorsRes = await fetch('http://localhost:8000/api/investments-tracking/entrepreneur-investors/', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (investorsRes.ok) {
+          const investorsData = await investorsRes.json()
+          setInvestors(investorsData)
+        }
+
       } catch (e) {
         console.error('Error fetching dashboard data:', e)
         setError(e instanceof Error ? e.message : 'Failed to load dashboard data')
@@ -290,6 +378,23 @@ export default function EntrepreneurDashboard() {
 
     fetchDashboardData()
   }, [])
+
+  useEffect(() => {
+    const fetchSaved = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      try {
+        const response = await fetch('http://localhost:8000/api/saved-businesses/', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSavedBusinesses(data.map((item: any) => ({ id: item.business.id, title: item.business.title })));
+        }
+      } catch (e) { /* ignore */ }
+    };
+    fetchSaved();
+  }, []);
 
   const formatCurrency = (amount: number) => {
     if (isNaN(amount) || amount === null || amount === undefined) {
@@ -302,6 +407,27 @@ export default function EntrepreneurDashboard() {
       maximumFractionDigits: 0 
     }).format(amount)
   }
+
+  const getBusinessStatus = (business: Business) => {
+    const now = new Date();
+    const deadline = new Date(business.deadline);
+    const isExpired = deadline < now;
+    const isFullyFunded = business.current_funding >= business.funding_goal;
+    const hasExactFunding = business.current_funding === business.funding_goal;
+    
+    if (hasExactFunding) {
+      return { status: 'Fully Funded', color: 'text-green-600', bgColor: 'bg-green-100' };
+    } else if (isExpired) {
+      return { status: 'Funding Expired', color: 'text-red-600', bgColor: 'bg-red-100' };
+    } else {
+      return { status: 'Raising Funds', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    }
+  }
+
+  const handleMessageInvestor = (investorId: number) => {
+    navigate(`/messages?user=${investorId}`);
+    setIsInvestorsModalOpen(false);
+  };
 
   if (loading) {
     return (
@@ -329,10 +455,14 @@ export default function EntrepreneurDashboard() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex flex-1">
         {/* Sidebar */}
-        <Sidebar active="Overview" />
-        {/* Main Content */}
+        <Sidebar 
+          active="Overview" 
+          savedBusinesses={savedBusinesses} 
+          onOpenInvestors={() => setIsInvestorsModalOpen(true)}
+        />
+        {/* Main Content - now a flex container for two columns */}
         <main className="flex-1 flex flex-col lg:flex-row lg:gap-8 p-6 lg:p-8">
-          {/* Center Main Area */}
+          {/* Left Column - Existing Dashboard Content */}
           <section className="flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-10 gap-4"> 
               <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
@@ -377,18 +507,27 @@ export default function EntrepreneurDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-              <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center">
+              <button 
+                onClick={() => navigate('/my-businesses')}
+                className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-shadow cursor-pointer"
+              >
                 <div className="text-sm text-gray-500 mb-4">Total Businesses</div>
                 <div className="text-5xl font-bold text-gray-900">{stats?.total_businesses || 0}</div>
-              </div>
-              <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center">
+              </button>
+              <button 
+                onClick={() => navigate('/my-businesses')}
+                className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-shadow cursor-pointer"
+              >
                 <div className="text-sm text-gray-500 mb-4">Total Funding Raised</div>
                 <div className="text-5xl font-bold text-gray-900">{formatCurrency(stats?.total_funding_raised || 0)}</div>
-              </div>
-              <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center">
+              </button>
+              <button 
+                onClick={() => setIsInvestorsModalOpen(true)}
+                className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-shadow cursor-pointer"
+              >
                 <div className="text-sm text-gray-500 mb-4">Total Investors</div>
                 <div className="text-5xl font-bold text-gray-900">{stats?.total_investors || 0}</div>
-              </div>
+              </button>
             </div>
             
             {/* New Metrics Cards Row */}
@@ -427,52 +566,94 @@ export default function EntrepreneurDashboard() {
                 <div className="text-sm text-gray-500 mb-4">Earning Last Month</div>
                 <div className="text-5xl font-bold text-gray-900">{formatCurrency((stats?.total_profit_generated || 0) / 12)}</div>
               </div>
-              <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center">
+              <button 
+                onClick={() => navigate('/documentation')}
+                className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 flex flex-col items-center hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-shadow cursor-pointer"
+              >
                 <div className="text-sm text-gray-500 mb-4">Logs</div>
                 <div className="text-5xl font-bold text-gray-900">{stats?.recent_logs?.length || 0}</div>
-              </div>
+              </button>
             </div>
 
             <div>
-              <div className="font-semibold text-xl mb-4">Active Businesses</div>
+              <div className="font-semibold text-xl mb-4">My Businesses</div>
               <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-0 overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
                     <tr className="text-left text-sm text-gray-500">
                       <th className="px-8 py-4">Business</th>
+                      <th className="px-8 py-4">Status</th>
                       <th className="px-8 py-4">Funding Goal</th>
                       <th className="px-8 py-4">Raised</th>
                       <th className="px-8 py-4">Investors</th>
+                      <th className="px-8 py-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="text-base">
-                    {businesses.slice(0, 2).map((item) => (
-                      <tr key={item.id} className="border-t">
-                        <td className="px-8 py-6 font-medium text-gray-900">{item.title}</td>
-                        <td className="px-8 py-6 text-gray-900 font-semibold">{formatCurrency(item.funding_goal)}</td>
-                        <td className="px-8 py-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-40 h-3 bg-gray-200 rounded-full overflow-hidden">
-                              <div className="h-3 rounded-full bg-gray-900" style={{ width: `${Math.round((parseFloat(item.current_funding?.toString() || '0') / parseFloat(item.funding_goal?.toString() || '1')) * 100)}%` }}></div>
-                            </div>
-                            <span className="text-gray-700 font-semibold">{Math.round((parseFloat(item.current_funding?.toString() || '0') / parseFloat(item.funding_goal?.toString() || '1')) * 100)}</span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6 text-gray-700">{item.backers}</td>
-                      </tr>
-                    ))}
+                    {businesses.slice(0, 2).map((item) => {
+                      const status = getBusinessStatus(item);
+                      return (
+                        <tr key={item.id} className="border-t">
+                          <td className="px-8 py-6">
+                            <button 
+                              onClick={() => navigate(`/business/${item.id}`)}
+                              className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
+                            >
+                              {item.title}
+                            </button>
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
+                              {status.status}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6 text-gray-900 font-semibold">{formatCurrency(item.funding_goal)}</td>
+                          <td className="px-8 py-6 text-gray-900 font-semibold">{formatCurrency(item.current_funding)}</td>
+                          <td className="px-8 py-6 text-gray-700">{item.backers}</td>
+                          <td className="px-8 py-6">
+                            <button
+                              onClick={() => navigate(`/business/${item.id}/fund-statistics`)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-colors border border-green-200"
+                            >
+                              View Stats
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           </section>
-          {/* Right Pane */}
-          <aside className="w-full lg:w-96 flex-shrink-0 px-6 py-8">
-            <CalendarWidget />
+
+          {/* Right Column - Blogs & Articles */}
+          <aside className="w-full lg:w-[584px] mt-10 lg:mt-0"> 
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <BookOpen className="w-6 h-6 text-emerald-600" />
+                <h3 className="text-xl font-bold text-gray-900">Blogs & Articles</h3>
+              </div>
+              <div className="space-y-6">
+                {mockBlogs.map((blog) => (
+                  <BlogCard key={blog.id} blog={blog} />
+                ))}
+              </div>
+              <button className="mt-6 w-full text-center text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center">
+                View All Articles <ArrowRight className="w-4 h-4 ml-2" />
+              </button>
+            </div>
           </aside>
         </main>
       </div>
+
+      {/* My Investors Modal */}
+      <MyInvestorsModal
+        isOpen={isInvestorsModalOpen}
+        onClose={handleMessageInvestor} 
+        investors={investors}
+        onMessageInvestor={handleMessageInvestor}
+      />
     </div>
   )
 }
-

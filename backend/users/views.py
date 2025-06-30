@@ -104,6 +104,7 @@ class UserProfileView(APIView):
             "phone_number": user.phone_number,
             "user_type": user.user_type,
             "prof_pic": profile_picture_url,
+            "fund": str(user.fund) if user.fund else "0",  # Include fund amount
         }, status=status.HTTP_200_OK)
 
 class UserProfilePictureUploadView(APIView):
@@ -163,6 +164,7 @@ class AddFundView(APIView):
 
     def post(self, request, *args, **kwargs):
         amount_str = request.data.get('amount')
+        payment_method = request.data.get('payment_method', 'unknown')
 
         if amount_str is None:
             return Response({"error": "Amount is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -188,6 +190,54 @@ class AddFundView(APIView):
 
         # You can return the updated fund or a success message
         return Response({
-            "message": f"Successfully added {amount:.2f} to your fund.",
-            "new_fund_total": str(user.fund) # Convert Decimal to string for JSON serialization
+            "message": f"Successfully added {amount:.2f} to your fund using {payment_method}.",
+            "new_fund_total": str(user.fund), # Convert Decimal to string for JSON serialization
+            "payment_method": payment_method
         }, status=status.HTTP_200_OK)
+
+class DeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            user = request.user
+            
+            # Delete profile picture if it exists
+            if user.prof_pic:
+                try:
+                    old_pic_path = user.prof_pic.path
+                    if os.path.exists(old_pic_path):
+                        os.remove(old_pic_path)
+                except Exception as e:
+                    print(f"Error deleting profile picture: {e}")
+            
+            # Delete the user account
+            user.delete()
+            
+            return Response({
+                "message": "Account deleted successfully"
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'An error occurred while deleting the account: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            return Response({
+                'id': user.id,
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'email': user.email,
+                'user_type': user.user_type,
+            }, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({
+                'error': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)

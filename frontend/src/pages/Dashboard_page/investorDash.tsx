@@ -1,4 +1,3 @@
-// frontend/src/pages/InvestorDashboard.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,20 +7,36 @@ import {
   DollarSign,
   Eye,
   Settings,
-  Calendar as CalendarIcon,
+  TrendingUp,
+  Users,
+  Building,
+  BarChart3,
+  Plus,
+  Wallet,
+  Target,
+  ArrowUpRight,
+  Briefcase,
+  User,
+  LogOut,
   Landmark,
   Coins,
   Banknote,
-} from "lucide-react";
+  Bookmark,
+  BookOpen,
+  ArrowRight
+} from "lucide-react"
+import { useUser } from "../../context/UserContext";
 
 // Interface for individual recent investment
 interface RecentInvestment {
-  id: number; // Assuming each investment has an ID
+  id: number;
+  business_id: number;
   business_name: string;
   category_name: string;
   amount_invested: number;
-  investment_date: string; // Or Date if you parse it
-  entrepreneur_name: string; // Name of the entrepreneur associated with the business
+  investment_date: string;
+  entrepreneur_name: string;
+  share_percentage: number;
 }
 
 // Interface for combined user and investor data
@@ -31,105 +46,116 @@ interface UserData {
   last_name: string;
   email: string;
   user_type: string;
-  fund?: number; // From CustomUser
-  prof_pic?: string; // From CustomUser
-  total_investments_count?: number; // From InvestorProfile
-  total_money_invested?: number; // From InvestorProfile
+  fund?: number;
+  prof_pic?: string;
+  total_investments_count?: number;
+  total_money_invested?: number;
 }
 
-// Sidebar component (remains mostly the same)
-function Sidebar({ active = "Overview" }) {
+interface DashboardStats {
+  total_invested: number;
+  total_returns: number;
+  active_investments: number;
+  portfolio_value: number;
+}
+
+// Blog Post Interface
+interface BlogPost {
+  id: number;
+  title: string;
+  excerpt: string;
+  date: string;
+  imageUrl: string;
+  link: string;
+}
+
+// Blog Card Component
+const BlogCard: React.FC<{ blog: BlogPost }> = ({ blog }) => {
+  return (
+    <div className="bg-white rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.05)] overflow-hidden">
+      <img src={blog.imageUrl} alt={blog.title} className="w-full h-36 object-cover" />
+      <div className="p-4">
+        <h4 className="font-semibold text-[#2A363B] mb-2 leading-tight">{blog.title}</h4> {/* Text color updated */}
+        <p className="text-gray-600 mb-3 line-clamp-2">{blog.excerpt}</p>
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>{blog.date}</span>
+          <a
+            href={blog.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#CF4647] hover:text-[#2A363B] font-medium inline-flex items-center" // Link color updated
+          >
+            Read More <ArrowRight className="w-3 h-3 ml-1" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Helper function for category colors (now using the palette's accent and primary dark colors)
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'Technology': return '#CF4647'; // Red
+    case 'Healthcare': return '#F5D061'; // Gold
+    case 'Finance': return '#2A363B';    // Dark Grey
+    case 'Agriculture': return '#CF4647'; // Reusing Red for another category
+    default: return '#2A363B'; // Default to Dark Grey
+  }
+};
+
+
+function Sidebar({ active = "Overview", onAddFundsClick, savedBusinesses }: { active?: string; onAddFundsClick: () => void, savedBusinesses: { id: number, title: string }[] }) {
   const navigate = useNavigate();
 
   const nav = [
-    { label: "Overview", icon: Home, action: () => navigate('/dashboard') }, // Navigating to /dashboard for overview
-    { label: "Add Funds", icon: DollarSign, action: () => navigate('/add-funds') },
-    // { label: "View Details", icon: Eye, action: () => navigate('/investment-details') },
+    { label: "Overview", icon: Home, action: () => navigate('/dashboard') },
+    { label: "Add Funds", icon: DollarSign, action: onAddFundsClick },
     { label: "Settings", icon: Settings, action: () => navigate('/profile') },
   ];
 
   return (
     <aside className="hidden md:flex flex-col w-80 min-h-full bg-white py-8 px-6 gap-3 shadow-[2px_0_20px_rgba(0,0,0,0.08)]">
-      {nav.map((item) => (
-        <button
-          key={item.label}
-          onClick={item.action}
-          className={`flex items-center gap-4 px-5 py-3 rounded-xl text-base font-medium transition-colors ${
-            active === item.label
-              ? "bg-gray-100 text-black"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          <item.icon className="w-6 h-6" />
-          {item.label}
-        </button>
-      ))}
-    </aside>
-  );
-}
-
-// CalendarWidget component (React key warning fixed)
-function CalendarWidget() {
-  // Fixed: Use more descriptive and unique day labels or use index as key
-  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const dates = Array(31)
-    .fill(0)
-    .map((_, i) => i + 1);
-
-  return (
-    <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] p-8">
-      <div className="flex items-center justify-between mb-6">
-        <span className="font-bold text-xl">July 2024</span>
-        <CalendarIcon className="w-6 h-6 text-gray-400" />
-      </div>
-      <div className="grid grid-cols-7 text-sm text-gray-400 mb-3">
-        {dayLabels.map((d, index) => ( // Fixed: Using index as key
-          <div key={index} className="text-center font-medium">
-            {d}
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-3">
-        {/* Fixed: Unique keys for placeholder divs */}
-        {Array(5)
-          .fill(null)
-          .map((_, i) => (
-            <div key={`empty-${i}`}></div>
-          ))}
-        {dates.map((d) => (
-          <div
-            key={d} // This key was already fine
-            className={`w-12 h-12 flex items-center justify-center rounded-full text-base font-medium ${
-              d === 5 ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"
+      <div>
+        {nav.map((item) => (
+          <button
+            key={item.label}
+            onClick={item.action}
+            className={`flex items-center gap-4 px-5 py-3 rounded-xl text-base font-medium transition-colors ${
+              active === item.label
+                ? "bg-[#F8F6F6] text-[#2A363B]" // Active state colors updated
+                : "text-gray-600 hover:bg-[#F8F6F6]" // Hover background updated
             }`}
           >
-            {d}
-          </div>
+            <item.icon className="w-6 h-6" />
+            {item.label}
+          </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ScheduleWidget component (remains the same)
-function ScheduleWidget() {
-  const schedule = [
-    { title: "Portfolio Review", time: "10:00 AM - 11:00 AM" },
-    { title: "Investment Meeting", time: "2:00 PM - 3:00 PM" },
-    { title: "Market Analysis", time: "4:00 PM - 5:00 PM" },
-  ];
-  return (
-    <div className="bg-white rounded-xl border p-4">
-      <div className="font-semibold mb-3">Schedule</div>
-      <ul className="space-y-2">
-        {schedule.map((item) => (
-          <li key={item.title}>
-            <div className="font-medium text-sm text-gray-900">{item.title}</div>
-            <div className="text-xs text-gray-500">{item.time}</div>
-          </li>
-        ))}
-      </ul>
-    </div>
+      {/* Saved Section immediately after nav */}
+      <div className="mt-8 pt-8 border-t border-gray-200">
+        <div className="flex items-center gap-2 mb-2 text-[#2A363B] font-semibold"> {/* Text color updated */}
+          <Bookmark className="w-5 h-5 text-[#CF4647]" /> {/* Icon color updated */}
+          Saved
+        </div>
+        {savedBusinesses.length === 0 ? (
+          <div className="text-xs text-gray-400">No saved businesses</div>
+        ) : (
+          <ul className="space-y-1">
+            {savedBusinesses.map(biz => (
+              <li key={biz.id}>
+                <button
+                  className="text-[#CF4647] hover:underline hover:text-[#2A363B] text-sm" // Link colors updated
+                  onClick={() => navigate(`/business/${biz.id}`)}
+                >
+                  {biz.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -137,9 +163,45 @@ export default function InvestorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [profilePicture, setProfilePicture] = useState<string | null>(null); // State for profile picture URL
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [recentInvestments, setRecentInvestments] = useState<RecentInvestment[]>([]);
+  const { openAddFundsModal } = useUser();
   const navigate = useNavigate();
+  const [savedBusinesses, setSavedBusinesses] = useState<{ id: number, title: string }[]>([]);
+
+  // States for dynamic data
+  const [portfolioDiversity, setPortfolioDiversity] = useState<Map<string, { investedAmount: number, percentage: number }>>(new Map());
+  const [uniqueBusinessesCount, setUniqueBusinessesCount] = useState<number>(0);
+
+
+  // Mock Blog Data - UPDATED TO USE LOCAL ASSET PATHS
+  const mockBlogs: BlogPost[] = [
+    {
+      id: 1,
+      title: "The Future of Sustainable Investing",
+      excerpt: "Explore the growing trends in sustainable investments and how they shape the future of finance.",
+      date: "June 25, 2025",
+      imageUrl: "/src/assets/1.jpg",
+      link: "https://example.com/blog/sustainable-investing"
+    },
+    {
+      id: 2,
+      title: "Understanding Venture Capital for Startups",
+      excerpt: "A comprehensive guide for startups looking to secure venture capital funding.",
+      date: "June 20, 2025",
+      imageUrl: "/src/assets/2.jpg",
+      link: "https://example.com/blog/venture-capital-startups"
+    },
+    {
+      id: 3,
+      title: "Diversifying Your Portfolio with Alternative Assets",
+      excerpt: "Learn how alternative assets can enhance your investment portfolio's diversification.",
+      date: "June 15, 2025",
+      imageUrl: "/src/assets/3.jpg",
+      link: "https://example.com/blog/alternative-assets"
+    },
+  ];
+
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -148,9 +210,8 @@ export default function InvestorDashboard() {
       try {
         const token = localStorage.getItem("authToken");
         if (!token) {
-          // Redirect to login if no token
           navigate("/login");
-          return; // Stop execution
+          return;
         }
 
         let fetchedUserData: UserData = {
@@ -164,7 +225,6 @@ export default function InvestorDashboard() {
           total_money_invested: 0,
         };
 
-        // --- 1. Fetch User Profile Data (for username, first_name, fund, prof_pic) ---
         try {
           const profileResponse = await fetch("http://localhost:8000/api/users/profile/", {
             headers: {
@@ -176,18 +236,16 @@ export default function InvestorDashboard() {
           if (profileResponse.ok) {
             const data = await profileResponse.json();
             fetchedUserData = {
-              ...fetchedUserData, // Start with current defaults/fallbacks
+              ...fetchedUserData,
               username: data.username || fetchedUserData.username,
               first_name: data.first_name || fetchedUserData.first_name,
               last_name: data.last_name || fetchedUserData.last_name,
               email: data.email || fetchedUserData.email,
               user_type: data.user_type || fetchedUserData.user_type,
-              // Ensure fund is parsed as float, handle Decimal from Django (which often comes as string)
               fund: data.fund !== undefined && data.fund !== null ? parseFloat(data.fund) : fetchedUserData.fund,
               prof_pic: data.prof_pic || fetchedUserData.prof_pic,
             };
 
-            // Update profile picture state and localStorage
             if (fetchedUserData.prof_pic) {
                 setProfilePicture(fetchedUserData.prof_pic);
                 localStorage.setItem('prof_pic', fetchedUserData.prof_pic);
@@ -199,7 +257,6 @@ export default function InvestorDashboard() {
             console.warn(
               `Failed to fetch user profile: ${profileResponse.statusText}. Using fallback data.`
             );
-            // Fallback to localStorage if API call fails
             fetchedUserData = {
               username: localStorage.getItem("username") || "User",
               first_name: localStorage.getItem("first_name") || "",
@@ -207,7 +264,7 @@ export default function InvestorDashboard() {
               email: localStorage.getItem("email") || "",
               user_type: localStorage.getItem("userType") || "investor",
               fund: parseFloat(localStorage.getItem("userFund") || "0"),
-              total_investments_count: 0, // Ensure these are reset on profile fetch failure
+              total_investments_count: 0,
               total_money_invested: 0,
             };
             if (localStorage.getItem('prof_pic')) {
@@ -216,7 +273,6 @@ export default function InvestorDashboard() {
           }
         } catch (profileError) {
           console.error("Error fetching user profile data:", profileError);
-          // Fallback if network error or malformed JSON
           fetchedUserData = {
             username: localStorage.getItem("username") || "User",
             first_name: localStorage.getItem("first_name") || "",
@@ -232,8 +288,6 @@ export default function InvestorDashboard() {
             }
         }
 
-        // --- 2. Fetch Investor Profile Data (for total_investments_count, total_money_invested) ---
-        // This is where investor-specific aggregated data comes from
         try {
           const investorProfileResponse = await fetch(
             "http://localhost:8000/api/investors/profile/",
@@ -247,34 +301,32 @@ export default function InvestorDashboard() {
 
           if (investorProfileResponse.ok) {
             const data = await investorProfileResponse.json();
-            // Merge investor-specific data into fetchedUserData
+            
             fetchedUserData.total_investments_count =
               data.total_investments_count !== undefined && data.total_investments_count !== null
                 ? data.total_investments_count
                 : fetchedUserData.total_investments_count;
             fetchedUserData.total_money_invested =
               data.total_money_invested !== undefined && data.total_money_invested !== null
-                ? parseFloat(data.total_money_invested) // Parse as float
+                ? parseFloat(data.total_money_invested)
                 : fetchedUserData.total_money_invested;
           } else {
             console.warn(
               "Could not fetch investor profile data. Using default/mock values."
             );
-            // Fallback for investor profile specific stats if API fails
             fetchedUserData.total_investments_count = 0;
             fetchedUserData.total_money_invested = 0;
           }
         } catch (investorError) {
           console.error("Error fetching investor profile data:", investorError);
-          // Fallback for investor profile specific stats on network/parse error
           fetchedUserData.total_investments_count = 0;
           fetchedUserData.total_money_invested = 0;
         }
 
-        // --- 3. Fetch Recent Investments ---
+        let fetchedRecentInvestments: RecentInvestment[] = [];
         try {
           const recentInvestmentsResponse = await fetch(
-            "http://localhost:8000/api/investments-tracking/recent-investments/",
+            "http://localhost:8000/api/investments-tracking/investor-recent/",
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -285,7 +337,8 @@ export default function InvestorDashboard() {
 
           if (recentInvestmentsResponse.ok) {
             const data: RecentInvestment[] = await recentInvestmentsResponse.json();
-            setRecentInvestments(data);
+            fetchedRecentInvestments = data;
+            setRecentInvestments(fetchedRecentInvestments);
           } else {
             console.warn("Could not fetch recent investments. Using empty array.");
             setRecentInvestments([]);
@@ -295,8 +348,29 @@ export default function InvestorDashboard() {
           setRecentInvestments([]);
         }
 
-        // Set the combined user data to state
         setUserData(fetchedUserData);
+
+        if (fetchedUserData.total_money_invested && fetchedUserData.total_money_invested > 0 && fetchedRecentInvestments.length > 0) {
+            const diversityMap = new Map<string, number>();
+            fetchedRecentInvestments.forEach(inv => {
+                const currentAmount = diversityMap.get(inv.category_name) || 0;
+                diversityMap.set(inv.category_name, currentAmount + inv.amount_invested);
+            });
+
+            const calculatedDiversity = new Map<string, { investedAmount: number, percentage: number }>();
+            diversityMap.forEach((amount, category) => {
+                const percentage = (amount / fetchedUserData.total_money_invested!) * 100;
+                calculatedDiversity.set(category, { investedAmount: amount, percentage: parseFloat(percentage.toFixed(1)) });
+            });
+            setPortfolioDiversity(calculatedDiversity);
+        } else {
+            setPortfolioDiversity(new Map());
+        }
+
+        const uniqueBusinessIds = new Set(fetchedRecentInvestments.map(inv => inv.business_id));
+        setUniqueBusinessesCount(uniqueBusinessIds.size);
+
+
       } catch (err) {
         console.error("Main error in fetchDashboardData:", err);
         setError(err instanceof Error ? err.message : "Failed to load dashboard data");
@@ -306,7 +380,24 @@ export default function InvestorDashboard() {
     };
 
     fetchDashboardData();
-  }, [navigate]); // navigate is in dependency array as it's used inside useEffect
+  }, [navigate]);
+
+  useEffect(() => {
+    const fetchSaved = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      try {
+        const response = await fetch('http://localhost:8000/api/saved-businesses/', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSavedBusinesses(data.map((item: any) => ({ id: item.business.id, title: item.business.title })));
+        }
+      } catch (e) { /* ignore */ }
+    };
+    fetchSaved();
+  }, []);
 
   const formatCurrency = (amount: number | undefined) => {
     if (amount === undefined || isNaN(amount)) return "$0";
@@ -325,10 +416,10 @@ export default function InvestorDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F6F6] flex items-center justify-center"> {/* Background color updated */}
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2A363B] mx-auto mb-4"></div> {/* Spinner color updated */}
+          <p className="text-[#2A363B]">Loading dashboard...</p> {/* Text color updated */}
         </div>
       </div>
     );
@@ -336,12 +427,12 @@ export default function InvestorDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F6F6] flex items-center justify-center"> {/* Background color updated */}
         <div className="text-center">
-          <p className="text-red-600 mb-4">Error: {error}</p>
+          <p className="text-[#CF4647] mb-4">Error: {error}</p> {/* Error text color updated */}
           <button
             onClick={() => window.location.reload()}
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800"
+            className="bg-[#2A363B] text-white px-4 py-2 rounded-lg hover:bg-gray-800" // Button color updated
           >
             Retry
           </button>
@@ -351,15 +442,22 @@ export default function InvestorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#F8F6F6] flex flex-col"> {/* Background color updated */}
       <div className="flex flex-1">
         {/* Sidebar */}
-        <Sidebar active="Overview" />
+        <Sidebar active="Overview" onAddFundsClick={() => openAddFundsModal()} savedBusinesses={savedBusinesses} />
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col xl:flex-row xl:gap-8 p-6 xl:p-8">
-          {/* Center Main Area */}
-          <section className="flex-1 min-w-0">
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col lg:flex-row lg:gap-8 p-6 lg:p-8">
+          {/* Left Column - Existing Dashboard Content */}
+          <section className="flex-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-10 gap-4"> 
+              <h1 className="text-4xl font-bold text-[#2A363B]">Dashboard</h1> {/* Text color updated */}
+              <div className="flex gap-4">
+                <button onClick={() => navigate('/my-investments')} className="bg-[#F8F6F6] text-[#2A363B] px-6 py-3 rounded-full font-semibold shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:bg-gray-200 transition">View My Investments</button> {/* Button colors updated */}
+              </div>
+            </div>
+
             {/* Profile Section */}
             <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 mb-10">
               <div className="flex items-center gap-6">
@@ -370,30 +468,33 @@ export default function InvestorDashboard() {
                     className="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="w-20 h-20 bg-[#2A363B] rounded-full flex items-center justify-center text-white text-2xl font-bold"> {/* Background color updated */}
                     {userData?.first_name?.charAt(0) || userData?.username?.charAt(0) || "U"}
                   </div>
                 )}
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl font-bold text-[#2A363B] mb-2"> {/* Text color updated */}
                     Welcome back, {userData?.first_name || userData?.username}!
                   </h2>
                   <p className="text-gray-600">Here's your investment portfolio overview</p>
                 </div>
-              </div>
+            </div>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
               {/* Total no of investments */}
-              <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6">
+              <div 
+                className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-shadow"
+                onClick={() => navigate('/my-investments')}
+              >
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-blue-100 rounded-xl">
-                    <Landmark className="w-6 h-6 text-blue-600" />
+                  <div className="p-3 bg-[#F8F6F6] rounded-xl"> {/* Background color updated */}
+                    <Landmark className="w-6 h-6 text-[#CF4647]" /> {/* Icon color updated */}
                   </div>
                   <span className="text-sm text-gray-500">Total No. of Investments</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="text-3xl font-bold text-[#2A363B] mb-2"> {/* Text color updated */}
                   {userData?.total_investments_count || 0}
                 </div>
                 <div className="text-sm text-gray-600">Businesses invested in</div>
@@ -402,12 +503,12 @@ export default function InvestorDashboard() {
               {/* Total money invested */}
               <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-green-100 rounded-xl">
-                    <Coins className="w-6 h-6 text-green-600" />
+                  <div className="p-3 bg-[#F8F6F6] rounded-xl"> {/* Background color updated */}
+                    <Coins className="w-6 h-6 text-[#F5D061]" /> {/* Icon color updated */}
                   </div>
                   <span className="text-sm text-gray-500">Total Money Invested</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="text-3xl font-bold text-[#2A363B] mb-2"> {/* Text color updated */}
                   {formatCurrency(userData?.total_money_invested)}
                 </div>
                 <div className="text-sm text-gray-600">Sum across all investments</div>
@@ -416,12 +517,12 @@ export default function InvestorDashboard() {
               {/* Current fund */}
               <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-purple-100 rounded-xl">
-                    <Banknote className="w-6 h-6 text-purple-600" />
+                  <div className="p-3 bg-[#F8F6F6] rounded-xl"> {/* Background color updated */}
+                    <Banknote className="w-6 h-6 text-[#CF4647]" /> {/* Icon color updated */}
                   </div>
                   <span className="text-sm text-gray-500">Current Fund</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="text-3xl font-bold text-[#2A363B] mb-2"> {/* Text color updated */}
                   {formatCurrency(userData?.fund)}
                 </div>
                 <div className="text-sm text-gray-600">Your available balance</div>
@@ -431,10 +532,10 @@ export default function InvestorDashboard() {
             {/* Recent Investments Table */}
             <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 mb-10">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Recent Investments (Business & Amount)</h3>
+                <h3 className="text-xl font-bold text-[#2A363B]">Recent Investments (Business & Amount)</h3> {/* Text color updated */}
                 <button
-                  onClick={() => navigate("/investment-details")}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => navigate("/my-investments")}
+                  className="text-[#CF4647] hover:text-[#2A363B] font-medium" // Button colors updated
                 >
                   View All
                 </button>
@@ -443,11 +544,12 @@ export default function InvestorDashboard() {
                 <table className="min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Business</th>
-                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Category</th>
-                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Amount Invested</th>
-                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Date</th>
-                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Entrepreneur</th>
+                      <th className="text-left py-4 px-6 font-semibold text-[#2A363B]">Business</th> {/* Text color updated */}
+                      <th className="text-left py-4 px-6 font-semibold text-[#2A363B]">Category</th> {/* Text color updated */}
+                      <th className="text-left py-4 px-6 font-semibold text-[#2A363B]">Amount Invested</th> {/* Text color updated */}
+                      <th className="text-left py-4 px-6 font-semibold text-[#2A363B]">Share %</th> {/* Text color updated */}
+                      <th className="text-left py-4 px-6 font-semibold text-[#2A363B]">Date</th> {/* Text color updated */}
+                      <th className="text-left py-4 px-6 font-semibold text-[#2A363B]">Entrepreneur</th> {/* Text color updated */}
                     </tr>
                   </thead>
                   <tbody>
@@ -458,28 +560,25 @@ export default function InvestorDashboard() {
                           className="border-b border-gray-100 hover:bg-gray-50"
                         >
                           <td className="py-4 px-6">
-                            <div className="font-medium text-gray-900">
+                            <div 
+                              className="font-medium text-[#2A363B] cursor-pointer hover:text-[#CF4647] hover:underline" // Link colors updated
+                              onClick={() => navigate(`/business/${investment.business_id}`)}
+                            >
                               {investment.business_name}
                             </div>
                           </td>
                           <td className="py-4 px-6">
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                              ${
-                                investment.category_name === "Technology"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : investment.category_name === "Healthcare"
-                                  ? "bg-green-100 text-green-800"
-                                  : investment.category_name === "Agriculture"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-gray-100 text-gray-800" // Default color
-                              }`}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F8F6F6] text-[#2A363B]`} // Category tag colors updated
                             >
                               {investment.category_name}
                             </span>
                           </td>
-                          <td className="py-4 px-6 font-semibold text-gray-900">
+                          <td className="py-4 px-6 font-semibold text-[#2A363B]"> {/* Text color updated */}
                             {formatCurrency(investment.amount_invested)}
+                          </td>
+                          <td className="py-4 px-6 text-gray-600">
+                            {formatPercentage(investment.share_percentage)}
                           </td>
                           <td className="py-4 px-6 text-gray-600">
                             {new Date(investment.investment_date).toLocaleDateString()}
@@ -491,7 +590,7 @@ export default function InvestorDashboard() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 px-6 text-center text-gray-500">
+                        <td colSpan={6} className="py-8 px-6 text-center text-gray-500">
                           No recent investments found.
                         </td>
                       </tr>
@@ -504,57 +603,36 @@ export default function InvestorDashboard() {
             {/* Portfolio Analytics */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
               <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">
+                <h3 className="text-xl font-bold text-[#2A363B]">
                   Portfolio Diversity by Business Category
-                </h3>
+                </h3> {/* Text color updated */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Technology</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-gray-200 rounded-full">
-                        <div className="w-24 h-2 bg-blue-600 rounded-full"></div>
+                  {portfolioDiversity.size > 0 ? (
+                    Array.from(portfolioDiversity.entries()).map(([category, data]) => (
+                      <div className="flex items-center justify-between" key={category}>
+                        <span className="text-gray-600">{category}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 h-2 bg-gray-200 rounded-full">
+                            <div className="h-2 rounded-full" style={{ width: `${data.percentage}%`, backgroundColor: getCategoryColor(category) }}></div>
+                          </div>
+                          <span className="text-sm font-medium text-[#2A363B]">{data.percentage}%</span> {/* Text color updated */}
+                        </div>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">45%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Healthcare</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-gray-200 rounded-full">
-                        <div className="w-16 h-2 bg-green-600 rounded-full"></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">25%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Finance</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-gray-200 rounded-full">
-                        <div className="w-20 h-2 bg-purple-600 rounded-full"></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">30%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Agriculture</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-gray-200 rounded-full">
-                        <div className="w-10 h-2 bg-orange-600 rounded-full"></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">10%</span>
-                    </div>
-                  </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">No investment data to display diversity.</p>
+                  )}
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Investment Performance</h3>
+                <h3 className="text-xl font-bold text-[#2A363B]">Investment Performance</h3> {/* Text color updated */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Average Investment Size</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-[#2A363B]"> {/* Text color updated */}
                       {formatCurrency(
-                        userData?.total_money_invested && userData.total_investments_count
+                        userData?.total_money_invested && userData.total_investments_count && userData.total_investments_count > 0
                           ? userData.total_money_invested / userData.total_investments_count
                           : 0
                       )}
@@ -562,30 +640,45 @@ export default function InvestorDashboard() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Total Investments</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-[#2A363B]"> {/* Text color updated */}
                       {userData?.total_investments_count || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Portfolio Companies</span>
-                    <span className="font-semibold text-gray-900">
-                      {userData?.total_investments_count || 0}
+                    <span className="font-semibold text-[#2A363B]"> {/* Text color updated */}
+                      {uniqueBusinessesCount}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">ROI</span>
-                    <span className="font-semibold text-gray-900">{formatPercentage(15)}</span>
+                    <span className="font-semibold text-[#2A363B]">{formatPercentage(15)}</span> {/* Text color updated */}
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Right Sidebar */}
-          <aside className="w-full xl:w-96 flex-shrink-0 p-6 xl:p-8">
-            <CalendarWidget />
-            <div className="mt-8">
-              <ScheduleWidget />
+          {/* Right Column - Blogs & Articles */}
+          <aside className="w-full lg:w-96 mt-10 lg:mt-0">
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <BookOpen className="w-6 h-6 text-[#CF4647]" /> {/* Icon color updated */}
+                <h3 className="text-xl font-bold text-[#2A363B]">Blogs & Articles</h3> {/* Text color updated */}
+              </div>
+              <div className="space-y-6">
+                {mockBlogs.map((blog) => (
+                  <BlogCard key={blog.id} blog={blog} />
+                ))}
+              </div>
+              <a
+                href="https://medium.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 w-full text-center text-[#CF4647] hover:text-[#2A363B] font-medium flex items-center justify-center py-2" // Link colors updated
+              >
+                View All Articles <ArrowRight className="w-4 h-4 ml-2" />
+              </a>
             </div>
           </aside>
         </main>
